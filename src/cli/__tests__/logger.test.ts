@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createJsonLogger } from '../logger.js';
+import { createJsonLogger } from '../../core/logger.js';
 
 describe('createJsonLogger', () => {
   it('writes JSON lines with correlation keys', async () => {

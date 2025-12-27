@@ -6,6 +6,10 @@ import { prepareCommand } from '../../commands/prepare.js';
 import { ExitCode } from '../../exit-codes.js';
 import { version } from '../../version.js';
 
+vi.mock('../../../daemon/manager.js', () => ({
+  ensureDaemonRunning: vi.fn().mockResolvedValue({ status: 'running' }),
+}));
+
 describe('prepareCommand', () => {
   const originalCwd = process.cwd;
   let tempDir: string;

@@ -1,6 +1,6 @@
 import { appendFileSync } from 'node:fs';
 import path from 'node:path';
-import type { LogLevel } from './artifacts.js';
+import type { LogLevel } from './log-level.js';
 
 const levelWeight: Record<LogLevel, number> = {
   error: 0,

@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { runCli } from '../../helpers/cli-runner.js';
 import { assertPrepareOutput } from '../../helpers/json-assertions.js';
 
 describe('prepare command E2E', () => {
+  afterAll(async () => {
+    await runCli(['daemon', 'stop']);
+  });
+
   it('should return PrepareOutput structure', async () => {
     const result = await runCli(['prepare']);
     expect(result.exitCode).toBe(0);

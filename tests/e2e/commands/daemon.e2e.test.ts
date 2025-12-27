@@ -1,8 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { runCli } from '../../helpers/cli-runner.js';
 import { assertDaemonOutput } from '../../helpers/json-assertions.js';
 
 describe('daemon command E2E', () => {
+  beforeEach(async () => {
+    await runCli(['daemon', 'stop']);
+  });
+
+  afterEach(async () => {
+    await runCli(['daemon', 'stop']);
+  });
+
   describe('status action', () => {
     it('should return DaemonOutput with status action', async () => {
       const result = await runCli(['daemon', 'status']);
@@ -23,6 +31,12 @@ describe('daemon command E2E', () => {
     it('should include status field', async () => {
       const result = await runCli(['daemon', 'status']);
       expect((result.json as { status: string }).status).toBeDefined();
+    });
+
+    it('should report running after analyze', async () => {
+      await runCli(['analyze']);
+      const result = await runCli(['daemon', 'status']);
+      expect((result.json as { status: string }).status).toBe('running');
     });
   });
 

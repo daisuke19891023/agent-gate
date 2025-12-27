@@ -177,6 +177,12 @@ We use a monorepo layout (exact paths may evolve). Keep layering clean:
 
 Do not import “up” the layers (core must not depend on daemon).
 
+### 5.2 Repo daemon modules
+
+- Repo daemon implementation lives under `src/daemon/` with a standalone
+  entrypoint (`src/daemon/entrypoint.ts`) that is spawned by the CLI manager.
+- Process execution primitives live under `src/core/process/`.
+
 ### 5.2 Schemas are contracts
 
 Config schema and report schema are public contracts.

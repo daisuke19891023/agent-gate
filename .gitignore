@@ -138,3 +138,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .spacs/
+
+# Agent-gate reports/logs
+.agent-gate/

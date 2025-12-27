@@ -1,6 +1,7 @@
 import type { CommandResult, DaemonOutput } from '../types.js';
 import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
+import { ensureValidConfig } from '../config.js';
 
 interface DaemonArgs {
   action: 'status' | 'stop';
@@ -48,6 +49,17 @@ async function handleStop(args: DaemonArgs): Promise<CommandResult> {
 }
 
 async function handler(args: DaemonArgs): Promise<CommandResult> {
+  const repoRoot = args.repo ?? process.cwd();
+  const configError = await ensureValidConfig({
+    configPath: args.config,
+    repoRoot,
+    pretty: args.pretty,
+    env: process.env,
+  });
+  if (configError) {
+    return configError;
+  }
+
   switch (args.action) {
     case 'status':
       return handleStatus(args);

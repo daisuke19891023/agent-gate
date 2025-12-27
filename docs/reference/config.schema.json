@@ -1,0 +1,538 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
+  "$ref": "#/definitions/AgentGateConfig",
+  "definitions": {
+    "AgentGateConfig": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "docker",
+                "podman",
+                "none"
+              ]
+            },
+            "network": {
+              "type": "object",
+              "properties": {
+                "prepare": {
+                  "type": "string",
+                  "enum": [
+                    "default",
+                    "deny-all",
+                    "proxy"
+                  ]
+                },
+                "validate": {
+                  "type": "string",
+                  "enum": [
+                    "default",
+                    "deny-all",
+                    "proxy"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "images": {
+              "type": "object",
+              "properties": {
+                "base": {
+                  "type": "string"
+                },
+                "toolchainOverrides": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "base"
+              ],
+              "additionalProperties": false
+            },
+            "env": {
+              "type": "object",
+              "properties": {
+                "passthrough": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "set": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "scheduler": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "single-process"
+            },
+            "slots": {
+              "type": "object",
+              "properties": {
+                "workspace": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "install": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "build": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "test": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "lsp": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    },
+                    "index": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "in-place",
+                "git-worktree"
+              ]
+            },
+            "baseDir": {
+              "type": "string"
+            },
+            "cleanup": {
+              "type": "object",
+              "properties": {
+                "ttlMinutes": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "keepLastN": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "keepOnFailure": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "baseDir": {
+              "type": "string"
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "safe",
+                "balanced",
+                "aggressive"
+              ]
+            },
+            "toolOverrides": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "workspace",
+                      "repo",
+                      "global"
+                    ]
+                  }
+                },
+                "required": [
+                  "scope"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "scope": {
+          "type": "object",
+          "properties": {
+            "defaultMode": {
+              "type": "string",
+              "enum": [
+                "changed",
+                "all"
+              ]
+            },
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "onNoChanges": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "skip",
+                "fail"
+              ]
+            },
+            "reportPotentialImpacts": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "toolchains": {
+          "type": "object",
+          "properties": {
+            "node": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "packageManager": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "pnpm",
+                    "npm",
+                    "yarn"
+                  ]
+                },
+                "install": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "auto",
+                        "ci",
+                        "install"
+                      ]
+                    },
+                    "workingDirectory": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "typecheck": {
+                  "type": "object",
+                  "properties": {
+                    "scriptName": {
+                      "type": "string"
+                    },
+                    "fallback": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "command": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "overrides": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "projectRoot": {
+                            "type": "string"
+                          },
+                          "command": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectRoot",
+                          "command"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "python": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "manager": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "uv",
+                    "pip",
+                    "poetry"
+                  ]
+                },
+                "install": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "auto",
+                        "sync",
+                        "install"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "typecheck": {
+                  "type": "object",
+                  "properties": {
+                    "tool": {
+                      "type": "string",
+                      "const": "pyright"
+                    },
+                    "overrides": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "projectRoot": {
+                            "type": "string"
+                          },
+                          "command": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectRoot",
+                          "command"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "java": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "csharp": {
+              "$ref": "#/definitions/AgentGateConfig/properties/toolchains/properties/java"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lsp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "lifecycle": {
+              "type": "object",
+              "properties": {
+                "idleTtlMinutes": {
+                  "type": "integer",
+                  "exclusiveMinimum": true,
+                  "minimum": 0
+                },
+                "restart": {
+                  "type": "object",
+                  "properties": {
+                    "maxRestarts": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "backoffMs": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "servers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "initializationOptions": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "settings": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "command"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "reports": {
+          "type": "object",
+          "properties": {
+            "outputDir": {
+              "type": "string"
+            },
+            "logDir": {
+              "type": "string"
+            },
+            "prettyJson": {
+              "type": "boolean"
+            },
+            "maxDiagnostics": {
+              "type": "integer",
+              "exclusiveMinimum": true,
+              "minimum": 0
+            },
+            "redact": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "patterns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "redactEnvKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "maxLogBytesPerStep": {
+              "type": "integer",
+              "exclusiveMinimum": true,
+              "minimum": 0
+            },
+            "allowDangerousCommands": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -111,6 +111,13 @@ describe('wrapInternalError', () => {
     expect(result.status).toBe('internal_error');
   });
 
+  it('should include nextActions array', () => {
+    const result = wrapInternalError(new Error('test'));
+
+    expect(Array.isArray(result.nextActions)).toBe(true);
+    expect(result.nextActions.length).toBeGreaterThan(0);
+  });
+
   it('should include tool name "agent-gate"', () => {
     const result = wrapInternalError(new Error('test'));
 

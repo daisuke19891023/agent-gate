@@ -134,6 +134,7 @@ describe('run', () => {
           type: 'usage',
           message: expect.any(String),
         },
+        nextActions: expect.any(Array),
       });
     });
 

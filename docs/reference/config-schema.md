@@ -6,7 +6,7 @@ This document defines the **stable configuration contract** for `agent-gate`.
 - Most users should not need to touch config beyond a few overrides.
 - Unknown/typo keys should be rejected to prevent silent misconfiguration.
 
-> Naming note: this repo/tool is **agent-gate** (CLI: `agent-gate`). If you see older drafts mentioning `agent-tools`, treat them as legacy naming.
+> Naming note: this repo/tool is **agent-gate** (CLI: `agent-gate`).
 
 ---
 

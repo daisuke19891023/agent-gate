@@ -1,4 +1,5 @@
 import { loadConfig, ConfigError } from '../config/load-config.js';
+import type { LoadedConfig } from '../config/load-config.js';
 import type { CommandResult } from './types.js';
 import { ExitCode } from './exit-codes.js';
 import { createErrorOutput } from './output.js';
@@ -12,14 +13,14 @@ interface EnsureConfigOptions {
 
 export async function ensureValidConfig(
   options: EnsureConfigOptions,
-): Promise<CommandResult | null> {
+): Promise<LoadedConfig | CommandResult> {
   try {
-    await loadConfig({
+    const loaded = await loadConfig({
       configPath: options.configPath,
       repoRoot: options.repoRoot,
       env: options.env,
     });
-    return null;
+    return loaded;
   } catch (error: unknown) {
     if (error instanceof ConfigError) {
       return {
@@ -34,4 +35,14 @@ export async function ensureValidConfig(
     }
     throw error;
   }
+}
+
+export function isCommandResult(
+  value: LoadedConfig | CommandResult,
+): value is CommandResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'exitCode' in value
+  );
 }

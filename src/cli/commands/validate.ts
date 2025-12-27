@@ -1,7 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, ValidateOutput } from '../types.js';
 import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
-import { ensureValidConfig } from '../config.js';
+import { ensureValidConfig, isCommandResult } from '../config.js';
+import {
+  ensureLogDir,
+  resolveArtifacts,
+  resolveLogLevel,
+  writeReportFile,
+} from '../artifacts.js';
+import { createJsonLogger } from '../logger.js';
 
 interface ValidateArgs {
   repo?: string;
@@ -13,15 +21,39 @@ interface ValidateArgs {
 
 async function handler(args: ValidateArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
-  const configError = await ensureValidConfig({
+  const configResult = await ensureValidConfig({
     configPath: args.config,
     repoRoot,
     pretty: args.pretty,
     env: process.env,
   });
-  if (configError) {
-    return configError;
+  if (isCommandResult(configResult)) {
+    return configResult;
   }
+
+  const sessionId = randomUUID();
+  const artifacts = resolveArtifacts(
+    repoRoot,
+    'validate',
+    configResult.config,
+    process.env,
+  );
+  await ensureLogDir(artifacts.logDirAbsolute);
+  const logger = createJsonLogger({
+    logDirAbsolute: artifacts.logDirAbsolute,
+    level: resolveLogLevel(args['log-level'], process.env),
+    context: {
+      repoId: 'stub-repo-id',
+      sessionId,
+      command: 'validate',
+    },
+    step: 'bootstrap',
+  });
+  logger.info('validate command started', {
+    repoRoot,
+    logDir: artifacts.logDir,
+    reportPath: artifacts.reportPath,
+  });
 
   const output: ValidateOutput = {
     tool: 'agent-gate',
@@ -73,10 +105,15 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       durationMs: 0,
     },
     artifacts: {
-      logDir: '.agent-gate/logs',
-      reportPath: '.agent-gate/reports/validate.json',
+      logDir: artifacts.logDir,
+      reportPath: artifacts.reportPath,
     },
   };
+
+  await writeReportFile(output, artifacts.reportPathAbsolute, args.pretty);
+  logger.info('validate command completed', {
+    reportPath: artifacts.reportPath,
+  });
 
   return {
     exitCode: ExitCode.Success,

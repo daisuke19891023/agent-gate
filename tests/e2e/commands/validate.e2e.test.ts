@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { runCli } from '../../helpers/cli-runner.js';
 import { assertValidateOutput } from '../../helpers/json-assertions.js';
 
@@ -71,5 +74,46 @@ describe('validate command E2E', () => {
     const result = await runCli(['validate', '--repo', '/tmp']);
     const output = result.json as { repo: { root: string } };
     expect(output.repo.root).toBe('/tmp');
+  });
+
+  it('should write report and log files with env log dir override', async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-e2e-'));
+    const customLogDir = path.join(repoRoot, 'custom-logs');
+
+    try {
+      const result = await runCli(['validate', '--repo', repoRoot], {
+        env: {
+          AGENT_TOOLS_LOG_DIR: customLogDir,
+        },
+      });
+
+      const output = result.json as {
+        artifacts: { logDir: string; reportPath: string };
+      };
+
+      expect(output.artifacts.logDir).toBe('custom-logs');
+
+      const reportPath = path.resolve(repoRoot, output.artifacts.reportPath);
+      await stat(reportPath);
+
+      const logEntries = await readdir(customLogDir);
+      expect(logEntries.length).toBeGreaterThan(0);
+
+      const logContents = await readFile(
+        path.join(customLogDir, logEntries[0]),
+        'utf8',
+      );
+      const firstLine = logContents.trim().split('\n')[0];
+      const payload = JSON.parse(firstLine) as Record<string, unknown>;
+
+      expect(payload).toMatchObject({
+        repoId: 'stub-repo-id',
+        command: 'validate',
+      });
+      expect(typeof payload.sessionId).toBe('string');
+      expect(typeof payload.step).toBe('string');
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
   });
 });

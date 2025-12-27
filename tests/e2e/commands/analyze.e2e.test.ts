@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { runCli } from '../../helpers/cli-runner.js';
 import { assertAnalyzeOutput } from '../../helpers/json-assertions.js';
 
 describe('analyze command E2E', () => {
+  afterAll(async () => {
+    await runCli(['daemon', 'stop']);
+  });
+
   it('should return AnalyzeOutput structure', async () => {
     const result = await runCli(['analyze']);
     expect(result.exitCode).toBe(0);

@@ -9,7 +9,8 @@ import {
   resolveLogLevel,
   writeReportFile,
 } from '../artifacts.js';
-import { createJsonLogger } from '../logger.js';
+import { createJsonLogger } from '../../core/logger.js';
+import { ensureDaemonRunning } from '../../daemon/manager.js';
 
 interface AnalyzeArgs {
   repo?: string;
@@ -39,9 +40,10 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     process.env,
   );
   await ensureLogDir(artifacts.logDirAbsolute);
+  const logLevel = resolveLogLevel(args['log-level'], process.env);
   const logger = createJsonLogger({
     logDirAbsolute: artifacts.logDirAbsolute,
-    level: resolveLogLevel(args['log-level'], process.env),
+    level: logLevel,
     context: {
       repoId: 'stub-repo-id',
       sessionId,
@@ -53,6 +55,12 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     repoRoot,
     logDir: artifacts.logDir,
     reportPath: artifacts.reportPath,
+  });
+
+  await ensureDaemonRunning({
+    repoRoot,
+    logDirAbsolute: artifacts.logDirAbsolute,
+    logLevel,
   });
 
   const output: AnalyzeOutput = {

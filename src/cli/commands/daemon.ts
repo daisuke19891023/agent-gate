@@ -4,7 +4,8 @@ import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
 import { ensureValidConfig, isCommandResult } from '../config.js';
 import { ensureLogDir, resolveArtifacts, resolveLogLevel } from '../artifacts.js';
-import { createJsonLogger } from '../logger.js';
+import { createJsonLogger } from '../../core/logger.js';
+import { getDaemonStatus, stopDaemon } from '../../daemon/manager.js';
 
 interface DaemonArgs {
   action: 'status' | 'stop';
@@ -16,15 +17,9 @@ interface DaemonArgs {
 }
 
 async function handleStatus(args: DaemonArgs): Promise<CommandResult> {
-  const output: DaemonOutput = {
-    tool: 'agent-gate',
-    toolVersion: version,
-    schemaVersion: 1,
-    command: 'daemon',
-    generatedAt: new Date().toISOString(),
-    action: 'status',
-    status: 'not_found',
-  };
+  const repoRoot = args.repo ?? process.cwd();
+  const status = await getDaemonStatus(repoRoot);
+  const output = toDaemonOutput('status', status);
 
   return {
     exitCode: ExitCode.Success,
@@ -34,15 +29,9 @@ async function handleStatus(args: DaemonArgs): Promise<CommandResult> {
 }
 
 async function handleStop(args: DaemonArgs): Promise<CommandResult> {
-  const output: DaemonOutput = {
-    tool: 'agent-gate',
-    toolVersion: version,
-    schemaVersion: 1,
-    command: 'daemon',
-    generatedAt: new Date().toISOString(),
-    action: 'stop',
-    status: 'not_found',
-  };
+  const repoRoot = args.repo ?? process.cwd();
+  const status = await stopDaemon(repoRoot);
+  const output = toDaemonOutput('stop', status);
 
   return {
     exitCode: ExitCode.Success,
@@ -138,3 +127,30 @@ export const daemonCommand = {
     }),
   handler: (args: unknown) => handler(args as DaemonArgs),
 };
+
+function toDaemonOutput(
+  action: 'status' | 'stop',
+  status: Awaited<ReturnType<typeof getDaemonStatus>>,
+): DaemonOutput {
+  const output: DaemonOutput = {
+    tool: 'agent-gate',
+    toolVersion: version,
+    schemaVersion: 1,
+    command: 'daemon',
+    generatedAt: new Date().toISOString(),
+    action,
+    status: status.status,
+  };
+
+  if (status.pid) {
+    output.pid = status.pid;
+  }
+  if (status.startedAt) {
+    const startedAt = new Date(status.startedAt).getTime();
+    if (!Number.isNaN(startedAt)) {
+      output.uptime = Math.max(0, Date.now() - startedAt);
+    }
+  }
+
+  return output;
+}

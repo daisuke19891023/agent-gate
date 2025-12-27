@@ -1,10 +1,8 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { AgentGateConfig } from '../config/schema.js';
-
-export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-
-const logLevels: LogLevel[] = ['error', 'warn', 'info', 'debug'];
+import type { LogLevel } from '../core/log-level.js';
+import { logLevels } from '../core/log-level.js';
 
 export interface ResolvedArtifacts {
   logDir: string;
@@ -82,5 +80,5 @@ function toPosixPath(value: string): string {
 }
 
 function isLogLevel(value: string): value is LogLevel {
-  return (logLevels as string[]).includes(value);
+  return logLevels.includes(value as LogLevel);
 }

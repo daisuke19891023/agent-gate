@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,6 +6,10 @@ import { runCli } from '../../helpers/cli-runner.js';
 import { assertValidateOutput } from '../../helpers/json-assertions.js';
 
 describe('validate command E2E', () => {
+  afterAll(async () => {
+    await runCli(['daemon', 'stop']);
+  });
+
   it('should return ValidateOutput structure', async () => {
     const result = await runCli(['validate']);
     expect(result.exitCode).toBe(0);
@@ -99,8 +103,13 @@ describe('validate command E2E', () => {
       const logEntries = await readdir(customLogDir);
       expect(logEntries.length).toBeGreaterThan(0);
 
+      const validateLog = logEntries.find((entry) =>
+        entry.startsWith('validate-'),
+      );
+      expect(validateLog).toBeDefined();
+
       const logContents = await readFile(
-        path.join(customLogDir, logEntries[0]),
+        path.join(customLogDir, validateLog ?? logEntries[0]),
         'utf8',
       );
       const firstLine = logContents.trim().split('\n')[0];

@@ -61,6 +61,12 @@ describe('daemonCommand', () => {
       expect((result.output as { status: string }).status).toBeDefined();
     });
 
+    it('should report not_found when daemon is absent', async () => {
+      const result = await daemonCommand.handler(baseArgs);
+
+      expect((result.output as { status: string }).status).toBe('not_found');
+    });
+
     it('should include tool metadata', async () => {
       const result = await daemonCommand.handler(baseArgs);
 
@@ -110,6 +116,12 @@ describe('daemonCommand', () => {
       const result = await daemonCommand.handler(baseArgs);
 
       expect((result.output as { status: string }).status).toBeDefined();
+    });
+
+    it('should report not_found when daemon is absent', async () => {
+      const result = await daemonCommand.handler(baseArgs);
+
+      expect((result.output as { status: string }).status).toBe('not_found');
     });
 
     it('should respect --pretty flag in result', async () => {

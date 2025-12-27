@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { validateCommand } from '../../commands/validate.js';
@@ -170,6 +170,35 @@ describe('validateCommand', () => {
       const result = await validateCommand.handler({ ...baseArgs, pretty: true });
 
       expect(result.pretty).toBe(true);
+    });
+
+    it('should return NETWORK_BLOCKED when deps are missing under deny-all', async () => {
+      await writeFile(
+        path.join(tempDir, 'agent-gate.config.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          runtime: { network: { validate: 'deny-all' } },
+        }),
+      );
+      await writeFile(
+        path.join(tempDir, 'package.json'),
+        JSON.stringify({ name: 'demo' }),
+      );
+
+      const result = await validateCommand.handler({
+        ...baseArgs,
+        repo: tempDir,
+      });
+
+      expect(result.exitCode).toBe(ExitCode.ValidationFailed);
+      expect(result.output).toMatchObject({
+        diagnostics: [
+          expect.objectContaining({ code: 'NETWORK_BLOCKED' }),
+        ],
+        nextActions: [
+          expect.objectContaining({ commands: ['agent-gate prepare'] }),
+        ],
+      });
     });
   });
 });

@@ -171,6 +171,8 @@ Recommended operational model:
 
 > The exact provider flags are an implementation detail, but the semantic contract is: `deny-all` means “no external network access”.
 
+If `validate` runs with `runtime.network.validate = deny-all` and dependencies are missing, the report includes `code: "NETWORK_BLOCKED"` and `nextActions` that prompt running `agent-gate prepare`.
+
 ### Output (ValidationReport)
 
 `agent-gate validate` returns a **ValidationReport** as defined in:

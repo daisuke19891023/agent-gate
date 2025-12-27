@@ -11,6 +11,9 @@ import {
 } from '../artifacts.js';
 import { createJsonLogger } from '../../core/logger.js';
 import { ensureDaemonRunning } from '../../daemon/manager.js';
+import { resolveNetworkPolicy } from '../../core/runtime/network-policy.js';
+import { checkDependencyStatus } from '../../core/runtime/deps-check.js';
+import { resolveProvider } from '../../providers/resolve-provider.js';
 
 interface ValidateArgs {
   repo?: string;
@@ -63,6 +66,50 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     logLevel,
   });
 
+  const networkPolicy = resolveNetworkPolicy(
+    'validate',
+    configResult.config.runtime?.network,
+  );
+  const { kind: runtimeProvider } = await resolveProvider(
+    configResult.config.runtime?.provider,
+  );
+  const dependencyStatus = await checkDependencyStatus(repoRoot);
+  const networkBlocked =
+    networkPolicy === 'deny-all' && dependencyStatus.missing;
+
+  const depsStepMessage = networkBlocked
+    ? 'Dependencies are missing but network access is disabled for validate.'
+    : 'validate command is not yet implemented';
+  const skippedStepMessage = networkBlocked
+    ? 'Skipped because dependency acquisition was blocked by network policy.'
+    : 'validate command is not yet implemented';
+
+  const diagnostics = networkBlocked
+    ? [
+        {
+          source: 'deps',
+          severity: 'error',
+          code: 'NETWORK_BLOCKED',
+          message:
+            'Dependencies are missing and network access is blocked during validate.',
+        },
+      ]
+    : [];
+
+  const nextActions = networkBlocked
+    ? [
+        {
+          kind: 'run-prepare',
+          message:
+            'Run prepare with network access enabled to fetch dependencies.',
+          commands: ['agent-gate prepare'],
+          docs: ['docs/reference/cli.md'],
+        },
+      ]
+    : [];
+
+  const warnings: string[] = [];
+
   const output: ValidateOutput = {
     tool: 'agent-gate',
     toolVersion: version,
@@ -81,35 +128,38 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     },
     environment: {
       runtime: {
-        provider: 'none',
-        networkPolicy: 'default',
+        provider: runtimeProvider,
+        networkPolicy,
       },
       fingerprints: {},
     },
     steps: [
       {
         name: 'deps',
-        status: 'skipped',
-        message: 'validate command is not yet implemented',
+        status: networkBlocked ? 'failed' : 'skipped',
+        message: depsStepMessage,
+        ...(dependencyStatus.reasons.length > 0
+          ? { notes: dependencyStatus.reasons }
+          : {}),
       },
       {
         name: 'typecheck',
         status: 'skipped',
-        message: 'validate command is not yet implemented',
+        message: skippedStepMessage,
       },
       {
         name: 'lspDiagnostics',
         status: 'skipped',
-        message: 'validate command is not yet implemented',
+        message: skippedStepMessage,
       },
     ],
-    diagnostics: [],
-    warnings: ['validate command is not yet implemented'],
-    nextActions: [],
+    diagnostics,
+    warnings,
+    nextActions,
     summary: {
-      ok: true,
-      errors: 0,
-      warnings: 1,
+      ok: !networkBlocked,
+      errors: networkBlocked ? 1 : 0,
+      warnings: warnings.length,
       durationMs: 0,
     },
     artifacts: {
@@ -124,7 +174,7 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
   });
 
   return {
-    exitCode: ExitCode.Success,
+    exitCode: networkBlocked ? ExitCode.ValidationFailed : ExitCode.Success,
     output,
     pretty: args.pretty,
   };

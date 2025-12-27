@@ -1,9 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { daemonCommand } from '../../commands/daemon.js';
 import { ExitCode } from '../../exit-codes.js';
 import { version } from '../../version.js';
 
 describe('daemonCommand', () => {
+  const originalCwd = process.cwd;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-daemon-'));
+    process.cwd = vi.fn().mockReturnValue(tempDir);
+  });
+
+  afterEach(async () => {
+    process.cwd = originalCwd;
+    await rm(tempDir, { recursive: true, force: true });
+  });
   describe('command metadata', () => {
     it('should have command name "daemon <action>"', () => {
       expect(daemonCommand.command).toBe('daemon <action>');

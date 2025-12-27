@@ -1,17 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { validateCommand } from '../../commands/validate.js';
 import { ExitCode } from '../../exit-codes.js';
 import { version } from '../../version.js';
 
 describe('validateCommand', () => {
   const originalCwd = process.cwd;
+  let tempDir: string;
 
-  beforeEach(() => {
-    process.cwd = vi.fn().mockReturnValue('/mock/cwd');
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-validate-'));
+    process.cwd = vi.fn().mockReturnValue(tempDir);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     process.cwd = originalCwd;
+    await rm(tempDir, { recursive: true, force: true });
   });
 
   describe('command metadata', () => {
@@ -57,13 +63,14 @@ describe('validateCommand', () => {
     });
 
     it('should use --repo option as repo root when provided', async () => {
+      const customRepo = path.join(tempDir, 'custom-path');
       const result = await validateCommand.handler({
         ...baseArgs,
-        repo: '/custom/path',
+        repo: customRepo,
       });
 
       expect((result.output as { repo: { root: string } }).repo.root).toBe(
-        '/custom/path',
+        customRepo,
       );
     });
 
@@ -71,7 +78,7 @@ describe('validateCommand', () => {
       const result = await validateCommand.handler(baseArgs);
 
       expect((result.output as { repo: { root: string } }).repo.root).toBe(
-        '/mock/cwd',
+        tempDir,
       );
     });
 

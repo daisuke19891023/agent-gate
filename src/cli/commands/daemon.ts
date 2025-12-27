@@ -1,7 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import type { CommandResult, DaemonOutput } from '../types.js';
 import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
-import { ensureValidConfig } from '../config.js';
+import { ensureValidConfig, isCommandResult } from '../config.js';
+import { ensureLogDir, resolveArtifacts, resolveLogLevel } from '../artifacts.js';
+import { createJsonLogger } from '../logger.js';
 
 interface DaemonArgs {
   action: 'status' | 'stop';
@@ -50,21 +53,59 @@ async function handleStop(args: DaemonArgs): Promise<CommandResult> {
 
 async function handler(args: DaemonArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
-  const configError = await ensureValidConfig({
+  const configResult = await ensureValidConfig({
     configPath: args.config,
     repoRoot,
     pretty: args.pretty,
     env: process.env,
   });
-  if (configError) {
-    return configError;
+  if (isCommandResult(configResult)) {
+    return configResult;
   }
+
+  const sessionId = randomUUID();
+  const artifacts = resolveArtifacts(
+    repoRoot,
+    'daemon',
+    configResult.config,
+    process.env,
+  );
+  await ensureLogDir(artifacts.logDirAbsolute);
+  const logger = createJsonLogger({
+    logDirAbsolute: artifacts.logDirAbsolute,
+    level: resolveLogLevel(args['log-level'], process.env),
+    context: {
+      repoId: 'stub-repo-id',
+      sessionId,
+      command: 'daemon',
+    },
+    step: 'bootstrap',
+  });
+  logger.info('daemon command started', {
+    repoRoot,
+    action: args.action,
+    logDir: artifacts.logDir,
+  });
 
   switch (args.action) {
     case 'status':
-      return handleStatus(args);
+      {
+        const result = await handleStatus(args);
+        logger.info('daemon command completed', {
+          action: args.action,
+          status: (result.output as { status?: string }).status,
+        });
+        return result;
+      }
     case 'stop':
-      return handleStop(args);
+      {
+        const result = await handleStop(args);
+        logger.info('daemon command completed', {
+          action: args.action,
+          status: (result.output as { status?: string }).status,
+        });
+        return result;
+      }
     default: {
       // Should not reach here due to yargs choices validation
       const exhaustiveCheck: never = args.action;

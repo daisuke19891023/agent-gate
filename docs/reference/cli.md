@@ -202,6 +202,7 @@ Optional environment variables (all optional; config file is preferred):
 
 - `AGENT_TOOLS_CONFIG` — config file path override
 - `AGENT_TOOLS_LOG_LEVEL` — same as `--log-level`
+- `AGENT_TOOLS_LOG_DIR` — override log output directory (default `.agent-gate/logs`)
 
 ---
 

@@ -5,7 +5,7 @@ import { prepareCommand } from './commands/prepare.js';
 import { validateCommand } from './commands/validate.js';
 import { daemonCommand } from './commands/daemon.js';
 import { ExitCode } from './exit-codes.js';
-import { version } from './version.js';
+import { createErrorOutput, wrapInternalError } from './output.js';
 
 /**
  * Stores the result from command handlers.
@@ -126,17 +126,10 @@ export async function run(argv: string[]): Promise<CommandResult> {
       // yargs validation error - treat as user error
       const errorResult: CommandResult = {
         exitCode: ExitCode.UserError,
-        output: {
-          tool: 'agent-gate',
-          toolVersion: version,
-          schemaVersion: 1,
-          status: 'error',
-          generatedAt: new Date().toISOString(),
-          error: {
-            type: 'usage',
-            message: msg || (err?.message ?? 'Unknown error'),
-          },
-        },
+        output: createErrorOutput({
+          category: 'usage',
+          message: msg || (err?.message ?? 'Unknown error'),
+        }),
         pretty: false,
       };
       setCommandResult(errorResult);
@@ -146,25 +139,24 @@ export async function run(argv: string[]): Promise<CommandResult> {
 
   try {
     await parser.parseAsync();
-  } catch {
-    // Parsing error already handled by .fail() - result is already set
+  } catch (error: unknown) {
+    if (!commandResult) {
+      commandResult = {
+        exitCode: ExitCode.InternalError,
+        output: wrapInternalError(error),
+        pretty: false,
+      };
+    }
   }
 
   // Return result or default error
   return (
     commandResult ?? {
       exitCode: ExitCode.UserError,
-      output: {
-        tool: 'agent-gate',
-        toolVersion: version,
-        schemaVersion: 1,
-        status: 'error',
-        generatedAt: new Date().toISOString(),
-        error: {
-          type: 'usage',
-          message: 'No command executed',
-        },
-      },
+      output: createErrorOutput({
+        category: 'usage',
+        message: 'No command executed',
+      }),
       pretty: false,
     }
   );

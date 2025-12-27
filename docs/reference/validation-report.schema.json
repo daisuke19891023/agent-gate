@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-gate.dev/schemas/validation-report.schema.json",
+  "title": "ValidationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tool",
+    "toolVersion",
+    "schemaVersion",
+    "command",
+    "generatedAt",
+    "repo",
+    "scope",
+    "environment",
+    "steps",
+    "diagnostics",
+    "warnings",
+    "nextActions",
+    "summary",
+    "artifacts"
+  ],
+  "properties": {
+    "tool": { "const": "agent-gate" },
+    "toolVersion": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "command": { "const": "validate" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "repo": { "$ref": "#/$defs/RepoRef" },
+    "scope": { "$ref": "#/$defs/ScopeInfo" },
+    "environment": { "$ref": "#/$defs/EnvironmentInfo" },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/StepResult" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/Diagnostic" } },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/Warning" } },
+    "nextActions": { "type": "array", "items": { "$ref": "#/$defs/NextAction" } },
+    "summary": { "$ref": "#/$defs/Summary" },
+    "artifacts": { "$ref": "#/$defs/Artifacts" }
+  },
+  "$defs": {
+    "RepoRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "id"],
+      "properties": {
+        "root": { "type": "string" },
+        "id": { "type": "string" },
+        "vcs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "git" },
+            "head": { "type": "string" }
+          }
+        }
+      }
+    },
+    "ScopeInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "changedFiles",
+        "selectedProjects",
+        "potentiallyImpactedProjects"
+      ],
+      "properties": {
+        "mode": { "enum": ["changed", "all"] },
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "selectedProjects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProjectRef" }
+        },
+        "potentiallyImpactedProjects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProjectRef" }
+        },
+        "overrides": { "type": "object" }
+      }
+    },
+    "ProjectRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "root"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["node", "python", "java", "csharp", "unknown"] },
+        "name": { "type": "string" },
+        "root": { "type": "string" },
+        "packageManager": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "EnvironmentInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "fingerprints"],
+      "properties": {
+        "runtime": { "$ref": "#/$defs/RuntimeInfo" },
+        "fingerprints": { "$ref": "#/$defs/Fingerprints" },
+        "toolchains": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ToolchainInfo" }
+        }
+      }
+    },
+    "RuntimeInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "networkPolicy"],
+      "properties": {
+        "provider": { "enum": ["docker", "podman", "none"] },
+        "networkPolicy": { "enum": ["default", "deny-all", "proxy"] },
+        "containerImage": { "type": "string" },
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["os", "arch"],
+          "properties": {
+            "os": { "type": "string" },
+            "arch": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Fingerprints": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "properties": {
+        "repoStateHash": { "type": "string" },
+        "nodeLockHash": { "type": "string" },
+        "pythonLockHash": { "type": "string" },
+        "configHash": { "type": "string" }
+      }
+    },
+    "ToolchainInfo": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "StepResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": {
+          "enum": ["deps", "typecheck", "compile", "lspDiagnostics", "tests"]
+        },
+        "status": { "enum": ["ok", "failed", "skipped"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "number" },
+        "command": { "type": "string" },
+        "exitCode": { "type": "integer" },
+        "logPath": { "type": "string" },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "severity", "message"],
+      "properties": {
+        "source": { "type": "string" },
+        "severity": { "enum": ["error", "warning", "info", "hint"] },
+        "message": { "type": "string" },
+        "file": { "type": "string" },
+        "range": { "$ref": "#/$defs/Range" },
+        "code": { "type": ["string", "number"] },
+        "tags": {
+          "type": "array",
+          "items": { "enum": ["unnecessary", "deprecated"] }
+        },
+        "related": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RelatedDiagnostic" }
+        }
+      }
+    },
+    "RelatedDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": {
+        "message": { "type": "string" },
+        "file": { "type": "string" },
+        "range": { "$ref": "#/$defs/Range" }
+      }
+    },
+    "Range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/Position" },
+        "end": { "$ref": "#/$defs/Position" },
+        "encoding": {
+          "enum": ["utf16", "utf8", "utf32", "unknown"]
+        }
+      }
+    },
+    "Position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "Warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "type": "string" },
+        "message": { "type": "string" },
+        "projectId": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    },
+    "NextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "type": "string" },
+        "message": { "type": "string" },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "docs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logDir", "reportPath"],
+      "properties": {
+        "logDir": { "type": "string" },
+        "reportPath": { "type": "string" },
+        "stepLogs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "daemonLog": { "type": "string" }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "errors", "warnings"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "infos": { "type": "integer", "minimum": 0 },
+        "hints": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

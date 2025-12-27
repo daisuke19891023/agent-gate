@@ -1,12 +1,12 @@
 # CLI Reference (v0)
 
-This document describes the **public CLI contract** for `agent-tools`.
+This document describes the **public CLI contract** for `agent-gate`.
 The CLI is designed for **automation** (agent skills, CI, scripts). It is intentionally **low freedom**.
 
 ## Stability guarantees
 
 - The CLI will remain backward compatible within the same **Major** version of the npm package.
-- `agent-tools validate` JSON output is versioned by `schemaVersion` (see report schema).
+- `agent-gate validate` JSON output is versioned by `schemaVersion` (see report schema).
 - Command names, exit codes, and required JSON fields are stable contracts.
 
 ## Conventions
@@ -15,6 +15,15 @@ The CLI is designed for **automation** (agent skills, CI, scripts). It is intent
 
 - **STDOUT is always JSON** (even on failures).
 - Human-readable details go into log files; the JSON includes paths to artifacts.
+
+### Error output
+
+Failures still return JSON with:
+
+- `status: "error"` (or `"internal_error"` for unexpected failures)
+- `error.type` (classified category)
+- `error.message`
+- `nextActions[]` with safe, actionable remediation steps
 
 ### Paths and ordering
 
@@ -26,7 +35,7 @@ The CLI is designed for **automation** (agent skills, CI, scripts). It is intent
 ## Synopsis
 
 ```bash
-agent-tools <command> [options]
+agent-gate <command> [options]
 ```
 
 ### Commands
@@ -35,6 +44,7 @@ agent-tools <command> [options]
 - `prepare` — acquire dependencies (required), prime caches, and ensure toolchains are ready.
 - `validate` — **required gate**: deps + compile/typecheck + LSP diagnostics (tests optional and off by default).
 - `daemon` — operational commands (status/stop) for troubleshooting.
+
 
 ---
 
@@ -76,7 +86,7 @@ Exit codes are stable:
 
 ---
 
-## `agent-tools analyze`
+## `agent-gate analyze`
 
 Detects:
 
@@ -98,12 +108,12 @@ The output includes:
 ### Example
 
 ```bash
-agent-tools analyze --pretty
+agent-gate analyze --pretty
 ```
 
 ---
 
-## `agent-tools prepare`
+## `agent-gate prepare`
 
 Prepares the repo for validation:
 
@@ -125,12 +135,12 @@ Includes:
 ### Example
 
 ```bash
-agent-tools prepare
+agent-gate prepare
 ```
 
 ---
 
-## `agent-tools validate`
+## `agent-gate validate`
 
 Runs the required quality gate:
 
@@ -163,24 +173,24 @@ Recommended operational model:
 
 ### Output (ValidationReport)
 
-`agent-tools validate` returns a **ValidationReport** as defined in:
+`agent-gate validate` returns a **ValidationReport** as defined in:
 
 - `docs/reference/report-schema.md`
 
 ### Example
 
 ```bash
-agent-tools validate --pretty
+agent-gate validate --pretty
 ```
 
 ---
 
-## `agent-tools daemon`
+## `agent-gate daemon`
 
 Operational commands for troubleshooting. Not intended for normal skill flows.
 
-- `agent-tools daemon status`
-- `agent-tools daemon stop`
+- `agent-gate daemon status`
+- `agent-gate daemon stop`
 
 These commands also output JSON.
 

@@ -2,7 +2,7 @@
 
 This document defines the stable, machine-readable contract returned by:
 
-- `agent-tools validate`
+- `agent-gate validate`
 
 The report is designed to be:
 
@@ -15,7 +15,12 @@ The report is designed to be:
 - `schemaVersion` is the **contract version** for this report format.
 - Backward-incompatible changes require incrementing `schemaVersion`.
 
-If we publish an accompanying JSON Schema file, it will target JSON Schema draft 2020-12 and include `$schema`. (This is a tooling detail; `schemaVersion` remains the app-level contract.)
+We publish an accompanying JSON Schema file at `docs/reference/validation-report.schema.json`. It targets JSON Schema draft 2020-12 and includes `$schema`. (This is a tooling detail; `schemaVersion` remains the app-level contract.)
+
+### Compatibility rules
+
+- Backward-compatible changes **may** add optional fields and new enum values.
+- Backward-incompatible changes (removing fields, changing types, or making optional fields required) **must** increment `schemaVersion`.
 
 ---
 
@@ -24,7 +29,7 @@ If we publish an accompanying JSON Schema file, it will target JSON Schema draft
 ### Required fields
 
 - `tool: string`
-  - Always `"agent-tools"`.
+  - Always `"agent-gate"`.
 
 - `toolVersion: string`
   - SemVer of the installed npm package.
@@ -279,7 +284,7 @@ A structured remediation suggestion.
 
 ```json
 {
-  "tool": "agent-tools",
+  "tool": "agent-gate",
   "toolVersion": "0.1.0",
   "schemaVersion": 1,
   "command": "validate",
@@ -302,13 +307,13 @@ A structured remediation suggestion.
       "name": "deps",
       "status": "ok",
       "durationMs": 12000,
-      "logPath": ".agent-tools/logs/deps.log"
+      "logPath": ".agent-gate/logs/deps.log"
     },
     {
       "name": "typecheck",
       "status": "failed",
       "durationMs": 3000,
-      "logPath": ".agent-tools/logs/typecheck.log"
+      "logPath": ".agent-gate/logs/typecheck.log"
     },
     { "name": "lspDiagnostics", "status": "ok", "durationMs": 500 }
   ],
@@ -333,6 +338,6 @@ A structured remediation suggestion.
       "message": "Add a typecheck script to packages/a or configure a fallback command."
     }
   ],
-  "artifacts": { "logDir": ".agent-tools/logs", "reportPath": ".agent-tools/reports/validate.json" }
+  "artifacts": { "logDir": ".agent-gate/logs", "reportPath": ".agent-gate/reports/validate.json" }
 }
 ```

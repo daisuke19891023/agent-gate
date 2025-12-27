@@ -1,6 +1,7 @@
 import type { CommandResult, ValidateOutput } from '../types.js';
 import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
+import { ensureValidConfig } from '../config.js';
 
 interface ValidateArgs {
   repo?: string;
@@ -12,6 +13,15 @@ interface ValidateArgs {
 
 async function handler(args: ValidateArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
+  const configError = await ensureValidConfig({
+    configPath: args.config,
+    repoRoot,
+    pretty: args.pretty,
+    env: process.env,
+  });
+  if (configError) {
+    return configError;
+  }
 
   const output: ValidateOutput = {
     tool: 'agent-gate',

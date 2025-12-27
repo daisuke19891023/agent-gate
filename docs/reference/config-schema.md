@@ -8,6 +8,10 @@ This document defines the **stable configuration contract** for `agent-gate`.
 
 > Naming note: this repo/tool is **agent-gate** (CLI: `agent-gate`).
 
+Machine-readable schema:
+
+- JSON Schema: `docs/reference/config.schema.json` (generated from `src/config/schema.ts`)
+
 ---
 
 ## 1) File format & loading

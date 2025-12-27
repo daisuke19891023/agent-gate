@@ -1,6 +1,7 @@
 import type { AnalyzeOutput, CommandResult } from '../types.js';
 import { ExitCode } from '../exit-codes.js';
 import { version } from '../version.js';
+import { ensureValidConfig } from '../config.js';
 
 interface AnalyzeArgs {
   repo?: string;
@@ -12,6 +13,15 @@ interface AnalyzeArgs {
 
 async function handler(args: AnalyzeArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
+  const configError = await ensureValidConfig({
+    configPath: args.config,
+    repoRoot,
+    pretty: args.pretty,
+    env: process.env,
+  });
+  if (configError) {
+    return configError;
+  }
 
   const output: AnalyzeOutput = {
     tool: 'agent-gate',

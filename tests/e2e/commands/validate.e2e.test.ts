@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../helpers/cli-runner.js';
@@ -121,6 +121,38 @@ describe('validate command E2E', () => {
       });
       expect(typeof payload.sessionId).toBe('string');
       expect(typeof payload.step).toBe('string');
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('should return NETWORK_BLOCKED when deps are missing under deny-all', async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-e2e-'));
+
+    try {
+      await writeFile(
+        path.join(repoRoot, 'agent-gate.config.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          runtime: { network: { validate: 'deny-all' } },
+        }),
+      );
+      await writeFile(
+        path.join(repoRoot, 'package.json'),
+        JSON.stringify({ name: 'demo' }),
+      );
+
+      const result = await runCli(['validate', '--repo', repoRoot]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.json).toMatchObject({
+        diagnostics: [
+          expect.objectContaining({ code: 'NETWORK_BLOCKED' }),
+        ],
+        nextActions: [
+          expect.objectContaining({ commands: ['agent-gate prepare'] }),
+        ],
+      });
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

@@ -11,6 +11,7 @@ import {
 } from '../artifacts.js';
 import { createJsonLogger } from '../../core/logger.js';
 import { ensureDaemonRunning } from '../../daemon/manager.js';
+import { resolveNetworkPolicy } from '../../core/runtime/network-policy.js';
 
 interface PrepareArgs {
   repo?: string;
@@ -63,6 +64,11 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
     logLevel,
   });
 
+  const networkPolicy = resolveNetworkPolicy(
+    'prepare',
+    configResult.config.runtime?.network,
+  );
+
   const output: PrepareOutput = {
     tool: 'agent-gate',
     toolVersion: version,
@@ -78,6 +84,7 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
         name: 'deps',
         status: 'skipped',
         message: 'prepare command is not yet implemented',
+        notes: [`networkPolicy: ${networkPolicy}`],
       },
     ],
     nextActions: [],

@@ -48,6 +48,7 @@ Only perform auto-commit when explicitly requested. Before committing:
 ## Output format
 
 When not auto-committing, output a concise plan with:
+
 - Proposed commit groups and paths
 - Proposed Conventional Commit messages
 - Next actions the user can choose (edit message, adjust split, or run auto-commit)

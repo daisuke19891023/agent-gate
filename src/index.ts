@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { run } from './cli/parser.js';
-import { ExitCode } from './cli/exit-codes.js';
-import { outputJson, wrapInternalError } from './cli/output.js';
+import { run } from "./cli/parser.js";
+import { ExitCode } from "./cli/exit-codes.js";
+import { outputJson, wrapInternalError } from "./cli/output.js";
 
 /**
  * Main CLI entry point.

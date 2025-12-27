@@ -1,4 +1,4 @@
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { readFile, writeFile, rm } from "node:fs/promises";
 
 export interface DaemonState {
   pid: number;
@@ -6,22 +6,17 @@ export interface DaemonState {
   socketPath: string;
 }
 
-export async function readDaemonState(
-  statePath: string,
-): Promise<DaemonState | null> {
+export async function readDaemonState(statePath: string): Promise<DaemonState | null> {
   try {
-    const raw = await readFile(statePath, 'utf8');
+    const raw = await readFile(statePath, "utf8");
     return JSON.parse(raw) as DaemonState;
   } catch {
     return null;
   }
 }
 
-export async function writeDaemonState(
-  statePath: string,
-  state: DaemonState,
-): Promise<void> {
-  await writeFile(statePath, JSON.stringify(state, null, 2) + '\n', 'utf8');
+export async function writeDaemonState(statePath: string, state: DaemonState): Promise<void> {
+  await writeFile(statePath, JSON.stringify(state, null, 2) + "\n", "utf8");
 }
 
 export async function removeDaemonState(statePath: string): Promise<void> {

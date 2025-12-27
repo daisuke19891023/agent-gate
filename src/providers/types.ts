@@ -1,12 +1,7 @@
-import type { NetworkPolicy } from '../core/runtime/network-policy.js';
+import type { NetworkPolicy } from "../core/runtime/network-policy.js";
 
-export type RuntimeProviderKind = 'docker' | 'podman' | 'none';
-export type RuntimeProviderPreference =
-  | 'auto'
-  | 'docker'
-  | 'podman'
-  | 'none'
-  | undefined;
+export type RuntimeProviderKind = "docker" | "podman" | "none";
+export type RuntimeProviderPreference = "auto" | "docker" | "podman" | "none" | undefined;
 
 export interface ContainerRunOptions {
   image: string;
@@ -15,6 +10,6 @@ export interface ContainerRunOptions {
 }
 
 export interface ContainerProvider {
-  kind: Exclude<RuntimeProviderKind, 'none'>;
+  kind: Exclude<RuntimeProviderKind, "none">;
   buildRunArgs(options: ContainerRunOptions): string[];
 }

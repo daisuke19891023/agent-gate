@@ -1,9 +1,9 @@
-import net from 'node:net';
-import { unlink } from 'node:fs/promises';
-import type { Logger } from '../core/logger.js';
-import type { DaemonRequest, DaemonResponse } from './ipc.js';
-import { writeDaemonState, removeDaemonState } from './state.js';
-import { TaskQueue } from './task-queue.js';
+import net from "node:net";
+import { unlink } from "node:fs/promises";
+import type { Logger } from "../core/logger.js";
+import type { DaemonRequest, DaemonResponse } from "./ipc.js";
+import { writeDaemonState, removeDaemonState } from "./state.js";
+import { TaskQueue } from "./task-queue.js";
 
 export interface DaemonServerOptions {
   socketPath: string;
@@ -17,27 +17,25 @@ export interface DaemonServerHandle {
   close: () => Promise<void>;
 }
 
-export async function startDaemonServer(
-  options: DaemonServerOptions,
-): Promise<DaemonServerHandle> {
+export async function startDaemonServer(options: DaemonServerOptions): Promise<DaemonServerHandle> {
   const { socketPath, statePath, lockPath, logger } = options;
   const startedAt = new Date().toISOString();
   const queue = new TaskQueue();
 
   const server = net.createServer((socket) => {
-    let buffer = '';
-    socket.on('data', (chunk) => {
+    let buffer = "";
+    socket.on("data", (chunk) => {
       buffer += chunk.toString();
-      const newlineIndex = buffer.indexOf('\n');
+      const newlineIndex = buffer.indexOf("\n");
       if (newlineIndex !== -1) {
         const line = buffer.slice(0, newlineIndex);
         buffer = buffer.slice(newlineIndex + 1);
         void queue.enqueue(async () => {
           const { response, shouldStop } = await handleRequest(line, startedAt);
-          socket.write(JSON.stringify(response) + '\n');
+          socket.write(JSON.stringify(response) + "\n");
           socket.end();
           if (shouldStop) {
-            await shutdown('stop-request');
+            await shutdown("stop-request");
           }
         });
       }
@@ -45,7 +43,7 @@ export async function startDaemonServer(
   });
 
   const shutdown = async (reason: string): Promise<void> => {
-    logger.info('daemon shutting down', { reason });
+    logger.info("daemon shutting down", { reason });
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
@@ -55,16 +53,16 @@ export async function startDaemonServer(
   };
 
   const stopHandler = (): void => {
-    void shutdown('signal');
+    void shutdown("signal");
   };
 
-  process.on('SIGINT', stopHandler);
-  process.on('SIGTERM', stopHandler);
+  process.on("SIGINT", stopHandler);
+  process.on("SIGTERM", stopHandler);
 
   await new Promise<void>((resolve, reject) => {
-    server.on('error', reject);
+    server.on("error", reject);
     server.listen(socketPath, () => {
-      logger.info('daemon server listening', { socketPath });
+      logger.info("daemon server listening", { socketPath });
       resolve();
     });
   });
@@ -72,23 +70,23 @@ export async function startDaemonServer(
   await writeDaemonState(statePath, {
     pid: process.pid,
     startedAt,
-    socketPath,
+    socketPath
   });
   await writeDaemonState(lockPath, {
     pid: process.pid,
     startedAt,
-    socketPath,
+    socketPath
   });
 
   return {
     startedAt,
-    close: () => shutdown('stop-request'),
+    close: () => shutdown("stop-request")
   };
 }
 
 async function handleRequest(
   raw: string,
-  startedAt: string,
+  startedAt: string
 ): Promise<{ response: DaemonResponse; shouldStop: boolean }> {
   let request: DaemonRequest;
   try {
@@ -97,44 +95,44 @@ async function handleRequest(
     return {
       response: {
         ok: false,
-        status: 'running',
-        message: 'invalid request',
+        status: "running",
+        message: "invalid request"
       },
-      shouldStop: false,
+      shouldStop: false
     };
   }
 
   switch (request.type) {
-    case 'status':
-    case 'ping':
+    case "status":
+    case "ping":
       return {
         response: {
           ok: true,
-          status: 'running',
+          status: "running",
           pid: process.pid,
-          startedAt,
+          startedAt
         },
-        shouldStop: false,
+        shouldStop: false
       };
-    case 'stop':
+    case "stop":
       return {
         response: {
           ok: true,
-          status: 'stopped',
+          status: "stopped",
           pid: process.pid,
-          startedAt,
+          startedAt
         },
-        shouldStop: true,
+        shouldStop: true
       };
     default: {
       const exhaustiveCheck: never = request;
       return {
         response: {
           ok: false,
-          status: 'running',
-          message: `unknown request: ${(exhaustiveCheck as DaemonRequest).type}`,
+          status: "running",
+          message: `unknown request: ${(exhaustiveCheck as DaemonRequest).type}`
         },
-        shouldStop: false,
+        shouldStop: false
       };
     }
   }

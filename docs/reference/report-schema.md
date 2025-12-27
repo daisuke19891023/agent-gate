@@ -1,14 +1,29 @@
-# Validation Report Schema (v0)
+# Report Schema (v0)
 
-This document defines the stable, machine-readable contract returned by:
+This document defines the stable, machine-readable contracts returned by:
 
+- `agent-gate analyze`
 - `agent-gate validate`
 
-The report is designed to be:
+All reports are designed to be:
 
 - deterministic,
-- actionable (via `nextActions[]`),
+- actionable (via `nextActions[]` where applicable),
 - easy to consume by coding agents.
+
+---
+
+## Common Fields
+
+All command outputs share these base fields:
+
+- `tool: "agent-gate"` — always this constant
+- `toolVersion: string` — SemVer of the installed npm package
+- `schemaVersion: number` — contract version (v0 starts at `1`)
+- `command: string` — the command that generated this report
+- `generatedAt: string` — ISO 8601 timestamp
+
+---
 
 ## Versioning
 
@@ -23,6 +38,129 @@ We publish an accompanying JSON Schema file at `docs/reference/validation-report
 - Backward-incompatible changes (removing fields, changing types, or making optional fields required) **must** increment `schemaVersion`.
 
 ---
+
+# AnalyzeReport
+
+The `agent-gate analyze` command returns an `AnalyzeReport` that describes the repository structure.
+
+## Top-level object: `AnalyzeReport`
+
+### Required fields
+
+- `tool: "agent-gate"`
+- `toolVersion: string`
+- `schemaVersion: number`
+- `command: "analyze"`
+- `generatedAt: string` — ISO 8601 timestamp
+- `repo: RepoRef`
+- `scope: AnalyzeScopeInfo`
+- `projects: ProjectRef[]`
+- `selectedProjects: ProjectRef[]`
+- `warnings: string[]`
+- `artifacts: Artifacts`
+
+---
+
+## `AnalyzeScopeInfo`
+
+Describes the scope that was analyzed.
+
+- `mode: "changed" | "all"`
+  - The scope mode used for analysis.
+
+- `changedFiles: ChangedFile[]`
+  - Files detected as changed (when `mode: "changed"`).
+
+- `hasChanges: boolean`
+  - Whether any changes were detected.
+
+---
+
+## `ChangedFile`
+
+Represents a file that has been modified.
+
+- `path: string`
+  - Repo-relative path with forward slashes.
+
+- `changeType: "added" | "modified" | "deleted" | "renamed"`
+  - The type of change detected.
+
+---
+
+## AnalyzeReport Example
+
+```json
+{
+  "tool": "agent-gate",
+  "toolVersion": "0.1.0",
+  "schemaVersion": 1,
+  "command": "analyze",
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "repo": {
+    "root": "/repo",
+    "id": "abc12345"
+  },
+  "scope": {
+    "mode": "changed",
+    "changedFiles": [
+      { "path": "packages/a/src/index.ts", "changeType": "modified" },
+      { "path": "packages/b/src/new.ts", "changeType": "added" }
+    ],
+    "hasChanges": true
+  },
+  "projects": [
+    {
+      "id": "node:@repo/a",
+      "kind": "node",
+      "name": "@repo/a",
+      "root": "packages/a",
+      "packageManager": "pnpm"
+    },
+    {
+      "id": "node:@repo/b",
+      "kind": "node",
+      "name": "@repo/b",
+      "root": "packages/b",
+      "packageManager": "pnpm"
+    },
+    {
+      "id": "python:utils",
+      "kind": "python",
+      "name": "utils",
+      "root": "python/utils",
+      "packageManager": "uv"
+    }
+  ],
+  "selectedProjects": [
+    {
+      "id": "node:@repo/a",
+      "kind": "node",
+      "name": "@repo/a",
+      "root": "packages/a",
+      "packageManager": "pnpm"
+    },
+    {
+      "id": "node:@repo/b",
+      "kind": "node",
+      "name": "@repo/b",
+      "root": "packages/b",
+      "packageManager": "pnpm"
+    }
+  ],
+  "warnings": [],
+  "artifacts": {
+    "logDir": ".agent-gate/logs",
+    "reportPath": ".agent-gate/reports/analyze.json"
+  }
+}
+```
+
+---
+
+# ValidationReport
+
+The `agent-gate validate` command returns a `ValidationReport`.
 
 ## Top-level object: `ValidationReport`
 
@@ -73,14 +211,14 @@ We publish an accompanying JSON Schema file at `docs/reference/validation-report
 - `mode: "changed" | "all"`
   - Default is `"changed"`.
 
-- `changedFiles: string[]`
-  - Repo-relative paths.
+- `changedFiles: ChangedFile[]`
+  - Files detected as changed. See `ChangedFile` in AnalyzeReport section.
 
 - `selectedProjects: ProjectRef[]`
-  - Projects actually validated.
+  - Projects actually validated (projects containing changed files).
 
 - `potentiallyImpactedProjects: ProjectRef[]`
-  - Projects not validated, but likely affected (future: “affected” mode).
+  - Projects not validated, but likely affected (future: "affected" mode).
 
 - `overrides?: object`
   - Optional description of config/CLI overrides that influenced scope.
@@ -292,9 +430,11 @@ A structured remediation suggestion.
   "repo": { "root": "/repo", "id": "repo-abc" },
   "scope": {
     "mode": "changed",
-    "changedFiles": ["packages/a/src/index.ts"],
+    "changedFiles": [
+      { "path": "packages/a/src/index.ts", "changeType": "modified" }
+    ],
     "selectedProjects": [
-      { "id": "node:a", "kind": "node", "name": "@repo/a", "root": "packages/a" }
+      { "id": "node:@repo/a", "kind": "node", "name": "@repo/a", "root": "packages/a", "packageManager": "pnpm" }
     ],
     "potentiallyImpactedProjects": []
   },

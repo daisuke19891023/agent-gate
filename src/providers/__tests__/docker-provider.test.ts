@@ -1,35 +1,27 @@
-import { describe, expect, it } from 'vitest';
-import { DockerProvider } from '../docker-provider.js';
+import { describe, expect, it } from "vitest";
+import { DockerProvider } from "../docker-provider.js";
 
-describe('DockerProvider', () => {
-  it('adds --network none when deny-all', () => {
+describe("DockerProvider", () => {
+  it("adds --network none when deny-all", () => {
     const provider = new DockerProvider();
 
     const args = provider.buildRunArgs({
-      image: 'alpine:latest',
-      networkPolicy: 'deny-all',
-      command: ['echo', 'hi'],
+      image: "alpine:latest",
+      networkPolicy: "deny-all",
+      command: ["echo", "hi"]
     });
 
-    expect(args).toEqual([
-      'run',
-      '--rm',
-      '--network',
-      'none',
-      'alpine:latest',
-      'echo',
-      'hi',
-    ]);
+    expect(args).toEqual(["run", "--rm", "--network", "none", "alpine:latest", "echo", "hi"]);
   });
 
-  it('omits network flags for default', () => {
+  it("omits network flags for default", () => {
     const provider = new DockerProvider();
 
     const args = provider.buildRunArgs({
-      image: 'alpine:latest',
-      networkPolicy: 'default',
+      image: "alpine:latest",
+      networkPolicy: "default"
     });
 
-    expect(args).toEqual(['run', '--rm', 'alpine:latest']);
+    expect(args).toEqual(["run", "--rm", "alpine:latest"]);
   });
 });

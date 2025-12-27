@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { TaskQueue } from '../task-queue.js';
+import { describe, it, expect } from "vitest";
+import { TaskQueue } from "../task-queue.js";
 
-describe('TaskQueue', () => {
-  it('should run tasks sequentially', async () => {
+describe("TaskQueue", () => {
+  it("should run tasks sequentially", async () => {
     const queue = new TaskQueue();
     const results: number[] = [];
 
@@ -13,7 +13,7 @@ describe('TaskQueue', () => {
       }),
       queue.enqueue(async () => {
         results.push(2);
-      }),
+      })
     ]);
 
     expect(results).toEqual([1, 2]);

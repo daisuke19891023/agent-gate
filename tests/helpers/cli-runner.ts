@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,30 +24,27 @@ export interface CliRunOptions {
  * @param options - Spawn options
  * @returns Promise resolving to CLI result
  */
-export async function runCli(
-  args: string[],
-  options: CliRunOptions = {},
-): Promise<CliResult> {
+export async function runCli(args: string[], options: CliRunOptions = {}): Promise<CliResult> {
   const { cwd, env, timeout = 10000 } = options;
 
   // Path to the built CLI entry point
-  const cliPath = path.resolve(__dirname, '../../dist/index.js');
+  const cliPath = path.resolve(__dirname, "../../dist/index.js");
 
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [cliPath, ...args], {
+    const child = spawn("node", [cliPath, ...args], {
       cwd,
       env: { ...process.env, ...env },
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ["pipe", "pipe", "pipe"]
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    child.stdout.on('data', (data: Buffer) => {
+    child.stdout.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
 
-    child.stderr.on('data', (data: Buffer) => {
+    child.stderr.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
@@ -56,7 +53,7 @@ export async function runCli(
       reject(new Error(`CLI timeout after ${timeout}ms`));
     }, timeout);
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       clearTimeout(timer);
 
       let json: unknown = null;
@@ -70,11 +67,11 @@ export async function runCli(
         stdout,
         stderr,
         exitCode: code ?? 1,
-        json,
+        json
       });
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       clearTimeout(timer);
       reject(err);
     });

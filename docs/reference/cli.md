@@ -95,20 +95,78 @@ Detects:
 - package managers,
 - candidate commands (typecheck scripts, etc).
 
-### Output (AnalyzeResult)
+### Scope resolution
+
+When `--scope changed` (default), the command:
+
+1. Detects uncommitted changes (working tree + staged) via `git diff`
+2. Maps changed files to their containing projects
+3. Reports `selectedProjects` (projects with changes)
+
+### Output (AnalyzeReport)
 
 The output includes:
 
-- `tool`, `toolVersion`, `command`
+- `tool`, `toolVersion`, `schemaVersion`, `command`, `generatedAt`
 - `repo.root`, `repo.id`
-- `projects[]` (detected subprojects)
-- `warnings[]` (e.g., ambiguous project boundaries)
+- `scope.mode` — `"changed"` or `"all"`
+- `scope.changedFiles[]` — array of `{ path, changeType }` objects
+- `scope.hasChanges` — boolean indicating if changes were detected
+- `projects[]` — all detected subprojects
+- `selectedProjects[]` — projects containing changed files
+- `warnings[]` — e.g., ambiguous project boundaries, unmapped files
 - `artifacts.logDir`, `artifacts.reportPath`
+
+### Project detection
+
+**Node/TypeScript projects** are detected using:
+
+- `package.json` files
+- Workspace configuration (`pnpm-workspace.yaml`, `package.json` workspaces)
+- Package manager detection from lockfiles (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`)
+
+**Python projects** are detected using:
+
+- `pyproject.toml` files
+- Package manager detection (`uv.lock`, `poetry.lock`, `[tool.uv]`, `[tool.poetry]`)
+
+### Project ID format
+
+- Node: `node:<package-name>` or `node:<relative-path>` if no name
+- Python: `python:<project-name>` or `python:<relative-path>` if no name
 
 ### Example
 
 ```bash
 agent-gate analyze --pretty
+```
+
+### Example output
+
+```json
+{
+  "tool": "agent-gate",
+  "toolVersion": "0.1.0",
+  "schemaVersion": 1,
+  "command": "analyze",
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "repo": { "root": "/repo", "id": "abc12345" },
+  "scope": {
+    "mode": "changed",
+    "changedFiles": [
+      { "path": "packages/a/src/index.ts", "changeType": "modified" }
+    ],
+    "hasChanges": true
+  },
+  "projects": [
+    { "id": "node:@repo/a", "kind": "node", "name": "@repo/a", "root": "packages/a", "packageManager": "pnpm" }
+  ],
+  "selectedProjects": [
+    { "id": "node:@repo/a", "kind": "node", "name": "@repo/a", "root": "packages/a", "packageManager": "pnpm" }
+  ],
+  "warnings": [],
+  "artifacts": { "logDir": ".agent-gate/logs", "reportPath": ".agent-gate/reports/analyze.json" }
+}
 ```
 
 ---
@@ -148,6 +206,22 @@ Runs the required quality gate:
 2. `typecheck` / `compile` (required)
 3. `lspDiagnostics` (required)
 4. `tests` (optional; off by default)
+
+### Scope resolution
+
+When `--scope changed` (default):
+
+1. Detects uncommitted changes (working tree + staged) via `git diff`
+2. Maps changed files to their containing projects
+3. Validates only `selectedProjects` (projects with changes)
+4. Reports `potentiallyImpactedProjects` (future: dependency-aware impact analysis)
+
+The `scope` section of the output includes:
+
+- `mode` — `"changed"` or `"all"`
+- `changedFiles[]` — array of `{ path, changeType }` objects
+- `selectedProjects[]` — projects containing changed files
+- `potentiallyImpactedProjects[]` — projects potentially affected by changes
 
 ### Default scope
 

@@ -1,200 +1,188 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { run, setCommandResult, getCommandResult } from '../parser.js';
-import { ExitCode } from '../exit-codes.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { run, setCommandResult, getCommandResult } from "../parser.js";
+import { ExitCode } from "../exit-codes.js";
 
 // Suppress stdout during tests
 let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  stdoutWriteSpy = vi
-    .spyOn(process.stdout, 'write')
-    .mockImplementation(() => true);
+  stdoutWriteSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 });
 
 afterEach(() => {
   stdoutWriteSpy.mockRestore();
 });
 
-describe('run', () => {
-  describe('command routing', () => {
+describe("run", () => {
+  describe("command routing", () => {
     it('should route "analyze" to analyze handler', async () => {
-      const result = await run(['analyze']);
+      const result = await run(["analyze"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { command: string }).command).toBe('analyze');
+      expect((result.output as { command: string }).command).toBe("analyze");
     });
 
     it('should route "prepare" to prepare handler', async () => {
-      const result = await run(['prepare']);
+      const result = await run(["prepare"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { command: string }).command).toBe('prepare');
+      expect((result.output as { command: string }).command).toBe("prepare");
     });
 
     it('should route "validate" to validate handler', async () => {
-      const result = await run(['validate']);
+      const result = await run(["validate"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { command: string }).command).toBe('validate');
+      expect((result.output as { command: string }).command).toBe("validate");
     });
 
     it('should route "daemon status" to daemon handler', async () => {
-      const result = await run(['daemon', 'status']);
+      const result = await run(["daemon", "status"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { command: string }).command).toBe('daemon');
-      expect((result.output as { action: string }).action).toBe('status');
+      expect((result.output as { command: string }).command).toBe("daemon");
+      expect((result.output as { action: string }).action).toBe("status");
     });
 
     it('should route "daemon stop" to daemon handler', async () => {
-      const result = await run(['daemon', 'stop']);
+      const result = await run(["daemon", "stop"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { command: string }).command).toBe('daemon');
-      expect((result.output as { action: string }).action).toBe('stop');
+      expect((result.output as { command: string }).command).toBe("daemon");
+      expect((result.output as { action: string }).action).toBe("stop");
     });
   });
 
-  describe('global options parsing', () => {
-    it('should parse --repo option', async () => {
-      const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-test-'));
+  describe("global options parsing", () => {
+    it("should parse --repo option", async () => {
+      const repoRoot = await mkdtemp(path.join(os.tmpdir(), "agent-gate-test-"));
       try {
-        const result = await run(['analyze', '--repo', repoRoot]);
+        const result = await run(["analyze", "--repo", repoRoot]);
 
         expect(result.exitCode).toBe(ExitCode.Success);
-        expect((result.output as { repo: { root: string } }).repo.root).toBe(
-          repoRoot,
-        );
+        expect((result.output as { repo: { root: string } }).repo.root).toBe(repoRoot);
       } finally {
         await rm(repoRoot, { recursive: true, force: true });
       }
     });
 
     it('should parse --scope with "changed" value', async () => {
-      const result = await run(['validate', '--scope', 'changed']);
+      const result = await run(["validate", "--scope", "changed"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { scope: { mode: string } }).scope.mode).toBe(
-        'changed',
-      );
+      expect((result.output as { scope: { mode: string } }).scope.mode).toBe("changed");
     });
 
     it('should parse --scope with "all" value', async () => {
-      const result = await run(['validate', '--scope', 'all']);
+      const result = await run(["validate", "--scope", "all"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { scope: { mode: string } }).scope.mode).toBe(
-        'all',
-      );
+      expect((result.output as { scope: { mode: string } }).scope.mode).toBe("all");
     });
 
     it('should use default scope "changed" when not specified', async () => {
-      const result = await run(['validate']);
+      const result = await run(["validate"]);
 
-      expect((result.output as { scope: { mode: string } }).scope.mode).toBe(
-        'changed',
-      );
+      expect((result.output as { scope: { mode: string } }).scope.mode).toBe("changed");
     });
 
-    it('should parse --pretty flag', async () => {
-      const result = await run(['analyze', '--pretty']);
+    it("should parse --pretty flag", async () => {
+      const result = await run(["analyze", "--pretty"]);
 
       expect(result.exitCode).toBe(ExitCode.Success);
       expect(result.pretty).toBe(true);
     });
 
-    it('should default pretty to false', async () => {
-      const result = await run(['analyze']);
+    it("should default pretty to false", async () => {
+      const result = await run(["analyze"]);
 
       expect(result.pretty).toBe(false);
     });
   });
 
-  describe('error handling', () => {
-    it('should return UserError (2) when no command specified', async () => {
+  describe("error handling", () => {
+    it("should return UserError (2) when no command specified", async () => {
       const result = await run([]);
 
       expect(result.exitCode).toBe(ExitCode.UserError);
     });
 
-    it('should return UserError (2) for unknown command', async () => {
-      const result = await run(['unknown-command']);
+    it("should return UserError (2) for unknown command", async () => {
+      const result = await run(["unknown-command"]);
 
       expect(result.exitCode).toBe(ExitCode.UserError);
     });
 
-    it('should return UserError (2) for unknown options', async () => {
-      const result = await run(['analyze', '--unknown-option']);
+    it("should return UserError (2) for unknown options", async () => {
+      const result = await run(["analyze", "--unknown-option"]);
 
       expect(result.exitCode).toBe(ExitCode.UserError);
     });
 
-    it('should return JSON error output for yargs validation failures', async () => {
-      const result = await run(['unknown']);
+    it("should return JSON error output for yargs validation failures", async () => {
+      const result = await run(["unknown"]);
 
       expect(result.output).toMatchObject({
-        tool: 'agent-gate',
-        status: 'error',
+        tool: "agent-gate",
+        status: "error",
         error: {
-          type: 'usage',
-          message: expect.any(String),
+          type: "usage",
+          message: expect.any(String)
         },
-        nextActions: expect.any(Array),
+        nextActions: expect.any(Array)
       });
     });
 
     it('should include error type "usage" in error output', async () => {
       const result = await run([]);
 
-      expect((result.output as { error: { type: string } }).error.type).toBe(
-        'usage',
-      );
+      expect((result.output as { error: { type: string } }).error.type).toBe("usage");
     });
 
-    it('should reject invalid --scope values', async () => {
-      const result = await run(['validate', '--scope', 'invalid']);
+    it("should reject invalid --scope values", async () => {
+      const result = await run(["validate", "--scope", "invalid"]);
 
       expect(result.exitCode).toBe(ExitCode.UserError);
     });
 
-    it('should reject invalid --log-level values', async () => {
-      const result = await run(['analyze', '--log-level', 'invalid']);
+    it("should reject invalid --log-level values", async () => {
+      const result = await run(["analyze", "--log-level", "invalid"]);
 
       expect(result.exitCode).toBe(ExitCode.UserError);
     });
   });
 
-  describe('result structure', () => {
-    it('should return CommandResult with exitCode', async () => {
-      const result = await run(['analyze']);
+  describe("result structure", () => {
+    it("should return CommandResult with exitCode", async () => {
+      const result = await run(["analyze"]);
 
-      expect(typeof result.exitCode).toBe('number');
+      expect(typeof result.exitCode).toBe("number");
     });
 
-    it('should return CommandResult with output', async () => {
-      const result = await run(['analyze']);
+    it("should return CommandResult with output", async () => {
+      const result = await run(["analyze"]);
 
       expect(result.output).toBeDefined();
-      expect(typeof result.output).toBe('object');
+      expect(typeof result.output).toBe("object");
     });
 
-    it('should return CommandResult with pretty flag', async () => {
-      const result = await run(['analyze']);
+    it("should return CommandResult with pretty flag", async () => {
+      const result = await run(["analyze"]);
 
-      expect(typeof result.pretty).toBe('boolean');
+      expect(typeof result.pretty).toBe("boolean");
     });
   });
 });
 
-describe('setCommandResult / getCommandResult', () => {
-  it('should store and retrieve command result', () => {
+describe("setCommandResult / getCommandResult", () => {
+  it("should store and retrieve command result", () => {
     const testResult = {
       exitCode: ExitCode.Success,
       output: { test: true },
-      pretty: false,
+      pretty: false
     };
 
     setCommandResult(testResult);

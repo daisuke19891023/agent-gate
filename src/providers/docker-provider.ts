@@ -1,13 +1,13 @@
-import type { ContainerProvider, ContainerRunOptions } from './types.js';
+import type { ContainerProvider, ContainerRunOptions } from "./types.js";
 
 export class DockerProvider implements ContainerProvider {
-  readonly kind = 'docker' as const;
+  readonly kind = "docker" as const;
 
   buildRunArgs(options: ContainerRunOptions): string[] {
-    const args: string[] = ['run', '--rm'];
+    const args: string[] = ["run", "--rm"];
 
-    if (options.networkPolicy === 'deny-all') {
-      args.push('--network', 'none');
+    if (options.networkPolicy === "deny-all") {
+      args.push("--network", "none");
     }
 
     args.push(options.image);

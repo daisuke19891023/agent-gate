@@ -1,42 +1,42 @@
-import { randomUUID } from 'node:crypto';
-import type { CommandResult, DaemonOutput } from '../types.js';
-import { ExitCode } from '../exit-codes.js';
-import { version } from '../version.js';
-import { ensureValidConfig, isCommandResult } from '../config.js';
-import { ensureLogDir, resolveArtifacts, resolveLogLevel } from '../artifacts.js';
-import { createJsonLogger } from '../../core/logger.js';
-import { getDaemonStatus, stopDaemon } from '../../daemon/manager.js';
+import { randomUUID } from "node:crypto";
+import type { CommandResult, DaemonOutput } from "../types.js";
+import { ExitCode } from "../exit-codes.js";
+import { version } from "../version.js";
+import { ensureValidConfig, isCommandResult } from "../config.js";
+import { ensureLogDir, resolveArtifacts, resolveLogLevel } from "../artifacts.js";
+import { createJsonLogger } from "../../core/logger.js";
+import { getDaemonStatus, stopDaemon } from "../../daemon/manager.js";
 
 interface DaemonArgs {
-  action: 'status' | 'stop';
+  action: "status" | "stop";
   repo?: string;
   config?: string;
-  scope: 'changed' | 'all';
+  scope: "changed" | "all";
   pretty: boolean;
-  'log-level': 'error' | 'warn' | 'info' | 'debug';
+  "log-level": "error" | "warn" | "info" | "debug";
 }
 
 async function handleStatus(args: DaemonArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
   const status = await getDaemonStatus(repoRoot);
-  const output = toDaemonOutput('status', status);
+  const output = toDaemonOutput("status", status);
 
   return {
     exitCode: ExitCode.Success,
     output,
-    pretty: args.pretty,
+    pretty: args.pretty
   };
 }
 
 async function handleStop(args: DaemonArgs): Promise<CommandResult> {
   const repoRoot = args.repo ?? process.cwd();
   const status = await stopDaemon(repoRoot);
-  const output = toDaemonOutput('stop', status);
+  const output = toDaemonOutput("stop", status);
 
   return {
     exitCode: ExitCode.Success,
     output,
-    pretty: args.pretty,
+    pretty: args.pretty
   };
 }
 
@@ -46,55 +46,48 @@ async function handler(args: DaemonArgs): Promise<CommandResult> {
     configPath: args.config,
     repoRoot,
     pretty: args.pretty,
-    env: process.env,
+    env: process.env
   });
   if (isCommandResult(configResult)) {
     return configResult;
   }
 
   const sessionId = randomUUID();
-  const artifacts = resolveArtifacts(
-    repoRoot,
-    'daemon',
-    configResult.config,
-    process.env,
-  );
+  const artifacts = resolveArtifacts(repoRoot, "daemon", configResult.config, process.env);
   await ensureLogDir(artifacts.logDirAbsolute);
   const logger = createJsonLogger({
     logDirAbsolute: artifacts.logDirAbsolute,
-    level: resolveLogLevel(args['log-level'], process.env),
+    level: resolveLogLevel(args["log-level"], process.env),
     context: {
-      repoId: 'stub-repo-id',
+      repoId: "stub-repo-id",
       sessionId,
-      command: 'daemon',
+      command: "daemon"
     },
-    step: 'bootstrap',
+    step: "bootstrap"
   });
-  logger.info('daemon command started', {
+  logger.info("daemon command started", {
     repoRoot,
     action: args.action,
-    logDir: artifacts.logDir,
+    logDir: artifacts.logDir
   });
 
   switch (args.action) {
-    case 'status':
-      {
-        const result = await handleStatus(args);
-        logger.info('daemon command completed', {
-          action: args.action,
-          status: (result.output as { status?: string }).status,
-        });
-        return result;
-      }
-    case 'stop':
-      {
-        const result = await handleStop(args);
-        logger.info('daemon command completed', {
-          action: args.action,
-          status: (result.output as { status?: string }).status,
-        });
-        return result;
-      }
+    case "status": {
+      const result = await handleStatus(args);
+      logger.info("daemon command completed", {
+        action: args.action,
+        status: (result.output as { status?: string }).status
+      });
+      return result;
+    }
+    case "stop": {
+      const result = await handleStop(args);
+      logger.info("daemon command completed", {
+        action: args.action,
+        status: (result.output as { status?: string }).status
+      });
+      return result;
+    }
     default: {
       // Should not reach here due to yargs choices validation
       const exhaustiveCheck: never = args.action;
@@ -111,35 +104,35 @@ interface YargsInstance {
       choices: readonly string[];
       demandOption: boolean;
       describe: string;
-    },
+    }
   ) => YargsInstance;
 }
 
 export const daemonCommand = {
-  command: 'daemon <action>',
-  describe: 'Daemon operational commands (status/stop)',
+  command: "daemon <action>",
+  describe: "Daemon operational commands (status/stop)",
   builder: (yargs: YargsInstance) =>
-    yargs.positional('action', {
-      type: 'string',
-      choices: ['status', 'stop'],
+    yargs.positional("action", {
+      type: "string",
+      choices: ["status", "stop"],
       demandOption: true,
-      describe: 'Daemon action to perform',
+      describe: "Daemon action to perform"
     }),
-  handler: (args: unknown) => handler(args as DaemonArgs),
+  handler: (args: unknown) => handler(args as DaemonArgs)
 };
 
 function toDaemonOutput(
-  action: 'status' | 'stop',
-  status: Awaited<ReturnType<typeof getDaemonStatus>>,
+  action: "status" | "stop",
+  status: Awaited<ReturnType<typeof getDaemonStatus>>
 ): DaemonOutput {
   const output: DaemonOutput = {
-    tool: 'agent-gate',
+    tool: "agent-gate",
     toolVersion: version,
     schemaVersion: 1,
-    command: 'daemon',
+    command: "daemon",
     generatedAt: new Date().toISOString(),
     action,
-    status: status.status,
+    status: status.status
   };
 
   if (status.pid) {

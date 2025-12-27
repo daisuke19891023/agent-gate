@@ -8,7 +8,7 @@ export default defineConfig({
     // Include patterns for test files
     include: [
       "src/**/__tests__/**/*.test.ts", // Unit tests
-      "tests/**/*.test.ts", // E2E tests
+      "tests/**/*.test.ts" // E2E tests
     ],
 
     // Exclude patterns
@@ -26,7 +26,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "lcov"],
-      reportsDirectory: "./coverage",
-    },
-  },
+      reportsDirectory: "./coverage"
+    }
+  }
 });

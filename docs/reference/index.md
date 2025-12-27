@@ -5,7 +5,7 @@ This section defines **stable contracts** for agent-gate. Anything documented he
 - [CLI Reference](./cli.md)
 - [Config Schema](./config-schema.md)
 - [Config JSON Schema](./config.schema.json)
-- [Validation Report Schema](./report-schema.md)
+- [Report Schema](./report-schema.md) — covers AnalyzeReport and ValidationReport
 - [Validation Report JSON Schema](./validation-report.schema.json)
 
 > Note: User flows and troubleshooting belong in `docs/user-manual/`.

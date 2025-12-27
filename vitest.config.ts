@@ -22,5 +22,11 @@ export default defineConfig({
 
     // Global setup - build before E2E tests
     globalSetup: "./tests/setup.ts",
+
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "lcov"],
+      reportsDirectory: "./coverage",
+    },
   },
 });

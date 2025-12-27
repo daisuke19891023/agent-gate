@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { run, setCommandResult, getCommandResult } from '../parser.js';
 import { ExitCode } from '../exit-codes.js';
 
@@ -57,12 +60,17 @@ describe('run', () => {
 
   describe('global options parsing', () => {
     it('should parse --repo option', async () => {
-      const result = await run(['analyze', '--repo', '/custom/path']);
+      const repoRoot = await mkdtemp(path.join(os.tmpdir(), 'agent-gate-test-'));
+      try {
+        const result = await run(['analyze', '--repo', repoRoot]);
 
-      expect(result.exitCode).toBe(ExitCode.Success);
-      expect((result.output as { repo: { root: string } }).repo.root).toBe(
-        '/custom/path',
-      );
+        expect(result.exitCode).toBe(ExitCode.Success);
+        expect((result.output as { repo: { root: string } }).repo.root).toBe(
+          repoRoot,
+        );
+      } finally {
+        await rm(repoRoot, { recursive: true, force: true });
+      }
     });
 
     it('should parse --scope with "changed" value', async () => {

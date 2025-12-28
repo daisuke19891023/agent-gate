@@ -1,5 +1,5 @@
-import net from 'node:net';
-import type { DaemonRequest, DaemonResponse } from './ipc.js';
+import net from "node:net";
+import type { DaemonRequest, DaemonResponse } from "./ipc.js";
 
 export interface DaemonClientOptions {
   socketPath: string;
@@ -8,24 +8,24 @@ export interface DaemonClientOptions {
 
 export async function sendDaemonRequest(
   request: DaemonRequest,
-  options: DaemonClientOptions,
+  options: DaemonClientOptions
 ): Promise<DaemonResponse> {
   const { socketPath, timeoutMs = 1000 } = options;
 
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ path: socketPath });
-    let buffer = '';
+    let buffer = "";
     const timer = setTimeout(() => {
-      socket.destroy(new Error('daemon request timeout'));
+      socket.destroy(new Error("daemon request timeout"));
     }, timeoutMs);
 
-    socket.on('connect', () => {
-      socket.write(JSON.stringify(request) + '\n');
+    socket.on("connect", () => {
+      socket.write(JSON.stringify(request) + "\n");
     });
 
-    socket.on('data', (chunk) => {
+    socket.on("data", (chunk) => {
       buffer += chunk.toString();
-      const newlineIndex = buffer.indexOf('\n');
+      const newlineIndex = buffer.indexOf("\n");
       if (newlineIndex !== -1) {
         const line = buffer.slice(0, newlineIndex);
         clearTimeout(timer);
@@ -38,25 +38,25 @@ export async function sendDaemonRequest(
       }
     });
 
-    socket.on('error', (error) => {
+    socket.on("error", (error) => {
       clearTimeout(timer);
       reject(error);
     });
 
-    socket.on('end', () => {
+    socket.on("end", () => {
       clearTimeout(timer);
       if (!buffer) {
-        reject(new Error('daemon response missing'));
+        reject(new Error("daemon response missing"));
       }
     });
   });
 }
 
 export async function tryGetDaemonStatus(
-  options: DaemonClientOptions,
+  options: DaemonClientOptions
 ): Promise<DaemonResponse | null> {
   try {
-    return await sendDaemonRequest({ type: 'status' }, options);
+    return await sendDaemonRequest({ type: "status" }, options);
   } catch {
     return null;
   }

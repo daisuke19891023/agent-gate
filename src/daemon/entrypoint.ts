@@ -1,23 +1,23 @@
-import { randomUUID } from 'node:crypto';
-import net from 'node:net';
-import path from 'node:path';
-import { mkdir, unlink } from 'node:fs/promises';
-import { ensureDaemonDir } from './paths.js';
-import { createJsonLogger } from '../core/logger.js';
-import type { LogLevel } from '../core/log-level.js';
-import { startDaemonServer } from './server.js';
+import { randomUUID } from "node:crypto";
+import net from "node:net";
+import path from "node:path";
+import { mkdir, unlink } from "node:fs/promises";
+import { ensureDaemonDir } from "./paths.js";
+import { createJsonLogger } from "../core/logger.js";
+import type { LogLevel } from "../core/log-level.js";
+import { startDaemonServer } from "./server.js";
 
 const args = process.argv.slice(2);
 
-const repoRoot = getArg('--repo');
-const socketPath = getArg('--socket');
-const statePath = getArg('--state');
-const lockPath = getArg('--lock');
-const logDirAbsolute = getArg('--log-dir');
-const logLevel = (getArg('--log-level') as LogLevel | null) ?? 'info';
+const repoRoot = getArg("--repo");
+const socketPath = getArg("--socket");
+const statePath = getArg("--state");
+const lockPath = getArg("--lock");
+const logDirAbsolute = getArg("--log-dir");
+const logLevel = (getArg("--log-level") as LogLevel | null) ?? "info";
 
 if (!repoRoot || !socketPath || !statePath || !lockPath || !logDirAbsolute) {
-  console.error('daemon entrypoint missing required arguments');
+  console.error("daemon entrypoint missing required arguments");
   process.exit(1);
 }
 
@@ -35,11 +35,11 @@ const logger = createJsonLogger({
   logDirAbsolute,
   level: logLevel,
   context: {
-    repoId: 'stub-repo-id',
+    repoId: "stub-repo-id",
     sessionId: randomUUID(),
-    command: 'daemon',
+    command: "daemon"
   },
-  step: 'bootstrap',
+  step: "bootstrap"
 });
 
 try {
@@ -47,13 +47,13 @@ try {
     socketPath,
     statePath,
     lockPath,
-    logger,
+    logger
   });
 } catch (error: unknown) {
   if (isAddressInUse(error)) {
     process.exit(0);
   }
-  console.error('daemon entrypoint failed', error);
+  console.error("daemon entrypoint failed", error);
   process.exit(1);
 }
 
@@ -73,13 +73,13 @@ async function isSocketActive(target: string): Promise<boolean> {
       resolve(false);
     }, 200);
 
-    socket.on('connect', () => {
+    socket.on("connect", () => {
       clearTimeout(timer);
       socket.end();
       resolve(true);
     });
 
-    socket.on('error', () => {
+    socket.on("error", () => {
       clearTimeout(timer);
       resolve(false);
     });
@@ -87,8 +87,8 @@ async function isSocketActive(target: string): Promise<boolean> {
 }
 
 function isAddressInUse(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return false;
   }
-  return 'code' in error && (error as { code?: string }).code === 'EADDRINUSE';
+  return "code" in error && (error as { code?: string }).code === "EADDRINUSE";
 }

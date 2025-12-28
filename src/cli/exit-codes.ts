@@ -14,7 +14,7 @@ export const ExitCode = {
   /** Infrastructure error - missing docker/podman/git, container runtime not reachable */
   InfrastructureError: 3,
   /** Internal error - bug (JSON output still produced) */
-  InternalError: 4,
+  InternalError: 4
 } as const;
 
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
@@ -22,26 +22,21 @@ export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
 /**
  * Error categories that map to exit codes.
  */
-export type ErrorCategory =
-  | 'validation'
-  | 'config'
-  | 'usage'
-  | 'infrastructure'
-  | 'internal';
+export type ErrorCategory = "validation" | "config" | "usage" | "infrastructure" | "internal";
 
 /**
  * Maps error categories to exit codes.
  */
 export function exitCodeFromCategory(category: ErrorCategory): ExitCode {
   switch (category) {
-    case 'validation':
+    case "validation":
       return ExitCode.ValidationFailed;
-    case 'config':
-    case 'usage':
+    case "config":
+    case "usage":
       return ExitCode.UserError;
-    case 'infrastructure':
+    case "infrastructure":
       return ExitCode.InfrastructureError;
-    case 'internal':
+    case "internal":
     default:
       return ExitCode.InternalError;
   }

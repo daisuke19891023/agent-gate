@@ -16,7 +16,7 @@ export class TaskQueue {
           } catch (error) {
             reject(error);
           }
-        },
+        }
       });
       void this.process();
     });

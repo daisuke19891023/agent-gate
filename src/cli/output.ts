@@ -1,5 +1,5 @@
-import type { ErrorCategory } from './exit-codes.js';
-import { version } from './version.js';
+import type { ErrorCategory } from "./exit-codes.js";
+import { version } from "./version.js";
 
 /**
  * All CLI output MUST go through this function.
@@ -12,7 +12,7 @@ export function outputJson(data: unknown, pretty: boolean): void {
   const json = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
 
   // Write directly to stdout (synchronous to avoid interleaving)
-  process.stdout.write(json + '\n');
+  process.stdout.write(json + "\n");
 }
 
 /**
@@ -27,10 +27,10 @@ export interface NextAction {
 }
 
 export interface ErrorOutput {
-  tool: 'agent-gate';
+  tool: "agent-gate";
   toolVersion: string;
   schemaVersion: number;
-  status: 'error' | 'internal_error';
+  status: "error" | "internal_error";
   generatedAt: string;
   error: {
     type: ErrorCategory;
@@ -49,17 +49,16 @@ export function wrapInternalError(error: unknown): ErrorOutput {
   const stack = error instanceof Error ? error.stack : undefined;
 
   return createErrorOutput({
-    category: 'internal',
+    category: "internal",
     message,
     stack,
     nextActions: [
       {
-        kind: 'report-bug',
-        message:
-          'Internal error. Re-run with --pretty and share the JSON output with maintainers.',
-        docs: ['docs/reference/cli.md'],
-      },
-    ],
+        kind: "report-bug",
+        message: "Internal error. Re-run with --pretty and share the JSON output with maintainers.",
+        docs: ["docs/reference/cli.md"]
+      }
+    ]
   });
 }
 
@@ -78,64 +77,64 @@ export function createErrorOutput(input: ErrorOutputInput): ErrorOutput {
       : defaultNextActionsForCategory(input.category);
 
   return {
-    tool: 'agent-gate',
+    tool: "agent-gate",
     toolVersion: version,
     schemaVersion: 1,
-    status: input.category === 'internal' ? 'internal_error' : 'error',
+    status: input.category === "internal" ? "internal_error" : "error",
     generatedAt: new Date().toISOString(),
     error: {
       type: input.category,
       message: input.message,
       ...(input.stack ? { stack: input.stack } : {}),
-      ...(input.details ? { details: input.details } : {}),
+      ...(input.details ? { details: input.details } : {})
     },
-    nextActions,
+    nextActions
   };
 }
 
 function defaultNextActionsForCategory(category: ErrorCategory): NextAction[] {
   switch (category) {
-    case 'usage':
+    case "usage":
       return [
         {
-          kind: 'check-usage',
-          message: 'Review CLI arguments and try again.',
-          docs: ['docs/reference/cli.md'],
-        },
+          kind: "check-usage",
+          message: "Review CLI arguments and try again.",
+          docs: ["docs/reference/cli.md"]
+        }
       ];
-    case 'config':
+    case "config":
       return [
         {
-          kind: 'fix-config',
-          message: 'Fix the configuration file and re-run the command.',
-          docs: ['docs/reference/config-schema.md'],
-        },
+          kind: "fix-config",
+          message: "Fix the configuration file and re-run the command.",
+          docs: ["docs/reference/config-schema.md"]
+        }
       ];
-    case 'infrastructure':
+    case "infrastructure":
       return [
         {
-          kind: 'check-infrastructure',
-          message: 'Ensure required runtimes are installed and reachable.',
-          docs: ['docs/reference/cli.md'],
-        },
+          kind: "check-infrastructure",
+          message: "Ensure required runtimes are installed and reachable.",
+          docs: ["docs/reference/cli.md"]
+        }
       ];
-    case 'validation':
+    case "validation":
       return [
         {
-          kind: 'fix-validation',
-          message: 'Resolve validation errors and re-run validate.',
-          docs: ['docs/reference/report-schema.md'],
-        },
+          kind: "fix-validation",
+          message: "Resolve validation errors and re-run validate.",
+          docs: ["docs/reference/report-schema.md"]
+        }
       ];
-    case 'internal':
+    case "internal":
     default:
       return [
         {
-          kind: 'report-bug',
+          kind: "report-bug",
           message:
-            'Internal error. Re-run with --pretty and share the JSON output with maintainers.',
-          docs: ['docs/reference/cli.md'],
-        },
+            "Internal error. Re-run with --pretty and share the JSON output with maintainers.",
+          docs: ["docs/reference/cli.md"]
+        }
       ];
   }
 }

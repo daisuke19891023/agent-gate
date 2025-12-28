@@ -1,4 +1,4 @@
-import type { ExitCode } from './exit-codes.js';
+import type { ExitCode } from "./exit-codes.js";
 
 /**
  * Global options available to all commands.
@@ -10,9 +10,9 @@ import type { ExitCode } from './exit-codes.js';
 export interface GlobalOptions {
   repo?: string;
   config?: string;
-  scope: 'changed' | 'all';
+  scope: "changed" | "all";
   pretty: boolean;
-  'log-level': 'error' | 'warn' | 'info' | 'debug';
+  "log-level": "error" | "warn" | "info" | "debug";
 }
 
 /**
@@ -30,7 +30,7 @@ export interface CommandResult {
  * All outputs include these fields per report-schema.md
  */
 export interface BaseOutput {
-  tool: 'agent-gate';
+  tool: "agent-gate";
   toolVersion: string;
   schemaVersion: number;
   command: string;
@@ -38,15 +38,40 @@ export interface BaseOutput {
 }
 
 /**
+ * Project reference in analyze output.
+ */
+export interface AnalyzeProjectRef {
+  id: string;
+  kind: "node" | "python";
+  name?: string;
+  root: string;
+  packageManager?: string;
+}
+
+/**
+ * Changed file in analyze output.
+ */
+export interface AnalyzeChangedFile {
+  path: string;
+  changeType: "added" | "modified" | "deleted" | "renamed" | "copied" | "untracked";
+}
+
+/**
  * Analyze command output structure.
  */
 export interface AnalyzeOutput extends BaseOutput {
-  command: 'analyze';
+  command: "analyze";
   repo: {
     root: string;
     id: string;
   };
-  projects: unknown[];
+  scope: {
+    mode: "changed" | "all";
+    changedFiles: AnalyzeChangedFile[];
+    hasChanges: boolean;
+  };
+  projects: AnalyzeProjectRef[];
+  selectedProjects: AnalyzeProjectRef[];
   warnings: string[];
   artifacts: {
     logDir: string;
@@ -55,16 +80,61 @@ export interface AnalyzeOutput extends BaseOutput {
 }
 
 /**
+ * Step result for prepare command.
+ */
+export interface PrepareStep {
+  name: "deps" | "toolchain";
+  status: "success" | "failed" | "skipped";
+  message?: string;
+  durationMs?: number;
+  logPath?: string;
+  notes?: string[];
+}
+
+/**
+ * Project install detail in prepare output.
+ */
+export interface PrepareProjectDetail {
+  id: string;
+  kind: "node" | "python";
+  root: string;
+  packageManager: {
+    manager: string;
+    lockfile?: string;
+    lockfileExists: boolean;
+    manifestPath: string;
+    version?: string;
+  };
+  installResult: "success" | "failed" | "skipped";
+  durationMs?: number;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+/**
+ * Next action in prepare output.
+ */
+export interface PrepareNextAction {
+  kind: string;
+  message: string;
+  commands?: string[];
+  docs?: string[];
+}
+
+/**
  * Prepare command output structure.
  */
 export interface PrepareOutput extends BaseOutput {
-  command: 'prepare';
+  command: "prepare";
   repo: {
     root: string;
     id: string;
   };
-  steps: unknown[];
-  nextActions: unknown[];
+  steps: PrepareStep[];
+  projects?: PrepareProjectDetail[];
+  nextActions: PrepareNextAction[];
   artifacts: {
     logDir: string;
     reportPath: string;
@@ -75,13 +145,13 @@ export interface PrepareOutput extends BaseOutput {
  * Validate command output structure (ValidationReport).
  */
 export interface ValidateOutput extends BaseOutput {
-  command: 'validate';
+  command: "validate";
   repo: {
     root: string;
     id: string;
   };
   scope: {
-    mode: 'changed' | 'all';
+    mode: "changed" | "all";
     changedFiles: string[];
     selectedProjects: unknown[];
     potentiallyImpactedProjects: unknown[];
@@ -113,9 +183,9 @@ export interface ValidateOutput extends BaseOutput {
  * Daemon command output structure.
  */
 export interface DaemonOutput extends BaseOutput {
-  command: 'daemon';
-  action: 'status' | 'stop';
-  status: 'running' | 'stopped' | 'not_found';
+  command: "daemon";
+  action: "status" | "stop";
+  status: "running" | "stopped" | "not_found";
   pid?: number;
   uptime?: number;
 }

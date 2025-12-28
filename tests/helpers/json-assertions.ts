@@ -1,14 +1,14 @@
-import { expect } from 'vitest';
+import { expect } from "vitest";
 
 /**
  * Asserts that the output contains required base fields.
  */
 export function assertBaseOutput(json: unknown): void {
   expect(json).toMatchObject({
-    tool: 'agent-gate',
+    tool: "agent-gate",
     toolVersion: expect.any(String),
     schemaVersion: expect.any(Number),
-    generatedAt: expect.any(String),
+    generatedAt: expect.any(String)
   });
 
   // Validate generatedAt is ISO format
@@ -24,8 +24,8 @@ export function assertErrorOutput(json: unknown): void {
   expect(json).toMatchObject({
     status: expect.stringMatching(/^(error|internal_error)$/),
     error: {
-      message: expect.any(String),
-    },
+      message: expect.any(String)
+    }
   });
 }
 
@@ -35,7 +35,7 @@ export function assertErrorOutput(json: unknown): void {
 export function assertSuccessOutput(json: unknown, command: string): void {
   assertBaseOutput(json);
   expect(json).toMatchObject({
-    command,
+    command
   });
 }
 
@@ -43,18 +43,18 @@ export function assertSuccessOutput(json: unknown, command: string): void {
  * Asserts analyze output structure.
  */
 export function assertAnalyzeOutput(json: unknown): void {
-  assertSuccessOutput(json, 'analyze');
+  assertSuccessOutput(json, "analyze");
   expect(json).toMatchObject({
     repo: {
       root: expect.any(String),
-      id: expect.any(String),
+      id: expect.any(String)
     },
     projects: expect.any(Array),
     warnings: expect.any(Array),
     artifacts: {
       logDir: expect.any(String),
-      reportPath: expect.any(String),
-    },
+      reportPath: expect.any(String)
+    }
   });
 }
 
@@ -62,18 +62,18 @@ export function assertAnalyzeOutput(json: unknown): void {
  * Asserts prepare output structure.
  */
 export function assertPrepareOutput(json: unknown): void {
-  assertSuccessOutput(json, 'prepare');
+  assertSuccessOutput(json, "prepare");
   expect(json).toMatchObject({
     repo: {
       root: expect.any(String),
-      id: expect.any(String),
+      id: expect.any(String)
     },
     steps: expect.any(Array),
     nextActions: expect.any(Array),
     artifacts: {
       logDir: expect.any(String),
-      reportPath: expect.any(String),
-    },
+      reportPath: expect.any(String)
+    }
   });
 }
 
@@ -81,21 +81,21 @@ export function assertPrepareOutput(json: unknown): void {
  * Asserts validate output structure.
  */
 export function assertValidateOutput(json: unknown): void {
-  assertSuccessOutput(json, 'validate');
+  assertSuccessOutput(json, "validate");
   expect(json).toMatchObject({
     repo: {
       root: expect.any(String),
-      id: expect.any(String),
+      id: expect.any(String)
     },
     scope: {
       mode: expect.stringMatching(/^(changed|all)$/),
       changedFiles: expect.any(Array),
       selectedProjects: expect.any(Array),
-      potentiallyImpactedProjects: expect.any(Array),
+      potentiallyImpactedProjects: expect.any(Array)
     },
     environment: {
       runtime: expect.any(Object),
-      fingerprints: expect.any(Object),
+      fingerprints: expect.any(Object)
     },
     steps: expect.any(Array),
     diagnostics: expect.any(Array),
@@ -105,25 +105,22 @@ export function assertValidateOutput(json: unknown): void {
       ok: expect.any(Boolean),
       errors: expect.any(Number),
       warnings: expect.any(Number),
-      durationMs: expect.any(Number),
+      durationMs: expect.any(Number)
     },
     artifacts: {
       logDir: expect.any(String),
-      reportPath: expect.any(String),
-    },
+      reportPath: expect.any(String)
+    }
   });
 }
 
 /**
  * Asserts daemon output structure.
  */
-export function assertDaemonOutput(
-  json: unknown,
-  action: 'status' | 'stop',
-): void {
-  assertSuccessOutput(json, 'daemon');
+export function assertDaemonOutput(json: unknown, action: "status" | "stop"): void {
+  assertSuccessOutput(json, "daemon");
   expect(json).toMatchObject({
     action,
-    status: expect.any(String),
+    status: expect.any(String)
   });
 }

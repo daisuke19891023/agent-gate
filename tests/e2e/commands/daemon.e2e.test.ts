@@ -1,76 +1,76 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { runCli } from '../../helpers/cli-runner.js';
-import { assertDaemonOutput } from '../../helpers/json-assertions.js';
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { runCli } from "../../helpers/cli-runner.js";
+import { assertDaemonOutput } from "../../helpers/json-assertions.js";
 
-describe('daemon command E2E', () => {
+describe("daemon command E2E", () => {
   beforeEach(async () => {
-    await runCli(['daemon', 'stop']);
+    await runCli(["daemon", "stop"]);
   });
 
   afterEach(async () => {
-    await runCli(['daemon', 'stop']);
+    await runCli(["daemon", "stop"]);
   });
 
-  describe('status action', () => {
-    it('should return DaemonOutput with status action', async () => {
-      const result = await runCli(['daemon', 'status']);
+  describe("status action", () => {
+    it("should return DaemonOutput with status action", async () => {
+      const result = await runCli(["daemon", "status"]);
       expect(result.exitCode).toBe(0);
-      assertDaemonOutput(result.json, 'status');
+      assertDaemonOutput(result.json, "status");
     });
 
     it('should include command "daemon"', async () => {
-      const result = await runCli(['daemon', 'status']);
-      expect((result.json as { command: string }).command).toBe('daemon');
+      const result = await runCli(["daemon", "status"]);
+      expect((result.json as { command: string }).command).toBe("daemon");
     });
 
     it('should include action "status"', async () => {
-      const result = await runCli(['daemon', 'status']);
-      expect((result.json as { action: string }).action).toBe('status');
+      const result = await runCli(["daemon", "status"]);
+      expect((result.json as { action: string }).action).toBe("status");
     });
 
-    it('should include status field', async () => {
-      const result = await runCli(['daemon', 'status']);
+    it("should include status field", async () => {
+      const result = await runCli(["daemon", "status"]);
       expect((result.json as { status: string }).status).toBeDefined();
     });
 
-    it('should report running after analyze', async () => {
-      await runCli(['analyze']);
-      const result = await runCli(['daemon', 'status']);
-      expect((result.json as { status: string }).status).toBe('running');
+    it("should report running after analyze", async () => {
+      await runCli(["analyze"]);
+      const result = await runCli(["daemon", "status"]);
+      expect((result.json as { status: string }).status).toBe("running");
     });
   });
 
-  describe('stop action', () => {
-    it('should return DaemonOutput with stop action', async () => {
-      const result = await runCli(['daemon', 'stop']);
+  describe("stop action", () => {
+    it("should return DaemonOutput with stop action", async () => {
+      const result = await runCli(["daemon", "stop"]);
       expect(result.exitCode).toBe(0);
-      assertDaemonOutput(result.json, 'stop');
+      assertDaemonOutput(result.json, "stop");
     });
 
     it('should include command "daemon"', async () => {
-      const result = await runCli(['daemon', 'stop']);
-      expect((result.json as { command: string }).command).toBe('daemon');
+      const result = await runCli(["daemon", "stop"]);
+      expect((result.json as { command: string }).command).toBe("daemon");
     });
 
     it('should include action "stop"', async () => {
-      const result = await runCli(['daemon', 'stop']);
-      expect((result.json as { action: string }).action).toBe('stop');
+      const result = await runCli(["daemon", "stop"]);
+      expect((result.json as { action: string }).action).toBe("stop");
     });
 
-    it('should include status field', async () => {
-      const result = await runCli(['daemon', 'stop']);
+    it("should include status field", async () => {
+      const result = await runCli(["daemon", "stop"]);
       expect((result.json as { status: string }).status).toBeDefined();
     });
   });
 
-  describe('invalid action', () => {
-    it('should return error for missing action', async () => {
-      const result = await runCli(['daemon']);
+  describe("invalid action", () => {
+    it("should return error for missing action", async () => {
+      const result = await runCli(["daemon"]);
       expect(result.exitCode).toBe(2);
     });
 
-    it('should return error for invalid action', async () => {
-      const result = await runCli(['daemon', 'invalid']);
+    it("should return error for invalid action", async () => {
+      const result = await runCli(["daemon", "invalid"]);
       expect(result.exitCode).toBe(2);
     });
   });

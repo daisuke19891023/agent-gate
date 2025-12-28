@@ -1,12 +1,12 @@
-import { appendFileSync } from 'node:fs';
-import path from 'node:path';
-import type { LogLevel } from './log-level.js';
+import { appendFileSync } from "node:fs";
+import path from "node:path";
+import type { LogLevel } from "./log-level.js";
 
 const levelWeight: Record<LogLevel, number> = {
   error: 0,
   warn: 1,
   info: 2,
-  debug: 3,
+  debug: 3
 };
 
 export interface LoggerContext {
@@ -29,15 +29,15 @@ export interface Logger {
 export interface LoggerOptions {
   logDirAbsolute: string;
   level: LogLevel;
-  context: Omit<LoggerContext, 'step'>;
+  context: Omit<LoggerContext, "step">;
   step?: string;
 }
 
 export function createJsonLogger(options: LoggerOptions): Logger {
-  const baseStep = options.step ?? 'bootstrap';
+  const baseStep = options.step ?? "bootstrap";
   const logFilePath = path.join(
     options.logDirAbsolute,
-    `${options.context.command}-${options.context.sessionId}.jsonl`,
+    `${options.context.command}-${options.context.sessionId}.jsonl`
   );
 
   const logger: Logger = {
@@ -53,22 +53,22 @@ export function createJsonLogger(options: LoggerOptions): Logger {
         sessionId: options.context.sessionId,
         command: options.context.command,
         step: baseStep,
-        ...(fields ?? {}),
+        ...(fields ?? {})
       };
-      appendFileSync(logFilePath, JSON.stringify(payload) + '\n');
+      appendFileSync(logFilePath, JSON.stringify(payload) + "\n");
     },
-    error: (message, fields) => logger.log('error', message, fields),
-    warn: (message, fields) => logger.log('warn', message, fields),
-    info: (message, fields) => logger.log('info', message, fields),
-    debug: (message, fields) => logger.log('debug', message, fields),
+    error: (message, fields) => logger.log("error", message, fields),
+    warn: (message, fields) => logger.log("warn", message, fields),
+    info: (message, fields) => logger.log("info", message, fields),
+    debug: (message, fields) => logger.log("debug", message, fields),
     withStep: (step) =>
       createJsonLogger({
         logDirAbsolute: options.logDirAbsolute,
         level: options.level,
         context: options.context,
-        step,
+        step
       }),
-    logFilePath,
+    logFilePath
   };
 
   return logger;

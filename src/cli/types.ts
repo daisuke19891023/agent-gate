@@ -80,6 +80,50 @@ export interface AnalyzeOutput extends BaseOutput {
 }
 
 /**
+ * Step result for prepare command.
+ */
+export interface PrepareStep {
+  name: "deps" | "toolchain";
+  status: "success" | "failed" | "skipped";
+  message?: string;
+  durationMs?: number;
+  logPath?: string;
+  notes?: string[];
+}
+
+/**
+ * Project install detail in prepare output.
+ */
+export interface PrepareProjectDetail {
+  id: string;
+  kind: "node" | "python";
+  root: string;
+  packageManager: {
+    manager: string;
+    lockfile?: string;
+    lockfileExists: boolean;
+    manifestPath: string;
+    version?: string;
+  };
+  installResult: "success" | "failed" | "skipped";
+  durationMs?: number;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+/**
+ * Next action in prepare output.
+ */
+export interface PrepareNextAction {
+  kind: string;
+  message: string;
+  commands?: string[];
+  docs?: string[];
+}
+
+/**
  * Prepare command output structure.
  */
 export interface PrepareOutput extends BaseOutput {
@@ -88,8 +132,9 @@ export interface PrepareOutput extends BaseOutput {
     root: string;
     id: string;
   };
-  steps: unknown[];
-  nextActions: unknown[];
+  steps: PrepareStep[];
+  projects?: PrepareProjectDetail[];
+  nextActions: PrepareNextAction[];
   artifacts: {
     logDir: string;
     reportPath: string;

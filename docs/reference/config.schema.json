@@ -272,6 +272,11 @@
                     },
                     "workingDirectory": {
                       "type": "string"
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
                     }
                   },
                   "additionalProperties": false

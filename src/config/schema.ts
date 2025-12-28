@@ -96,7 +96,8 @@ const scopeSchema = z
 const nodeInstallSchema = z
   .object({
     mode: z.enum(["auto", "ci", "install"]).optional(),
-    workingDirectory: z.string().optional()
+    workingDirectory: z.string().optional(),
+    timeoutMs: z.number().int().positive().optional()
   })
   .strict();
 

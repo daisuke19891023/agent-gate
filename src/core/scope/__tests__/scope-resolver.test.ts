@@ -230,9 +230,7 @@ describe("scope-resolver", () => {
         onNoChanges: "ok"
       });
 
-      const hasLockfile = result.changedFiles.some(
-        (file) => file.path === "pnpm-lock.yaml"
-      );
+      const hasLockfile = result.changedFiles.some((file) => file.path === "pnpm-lock.yaml");
       expect(hasLockfile).toBe(true);
     });
 

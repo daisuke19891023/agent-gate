@@ -180,7 +180,8 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
   const dependencyStatus = skipValidation
     ? { required: false, missing: false, reasons: [] as string[] }
     : await checkDependencyStatus(repoRoot);
-  const networkBlocked = !skipValidation && networkPolicy === "deny-all" && dependencyStatus.missing;
+  const networkBlocked =
+    !skipValidation && networkPolicy === "deny-all" && dependencyStatus.missing;
 
   const diagnostics: ValidateDiagnostic[] = networkBlocked
     ? [

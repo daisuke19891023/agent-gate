@@ -13,7 +13,7 @@ export interface ResolvedArtifacts {
 }
 
 export function resolveLogLevel(cliLevel: LogLevel, env: NodeJS.ProcessEnv | undefined): LogLevel {
-  const envLevel = env?.AGENT_TOOLS_LOG_LEVEL;
+  const envLevel = env?.AGENT_GATE_LOG_LEVEL;
   if (envLevel && isLogLevel(envLevel)) {
     return envLevel;
   }
@@ -27,7 +27,7 @@ export function resolveArtifacts(
   env: NodeJS.ProcessEnv | undefined
 ): ResolvedArtifacts {
   const reportsConfig = config.reports;
-  const logDirConfig = env?.AGENT_TOOLS_LOG_DIR ?? reportsConfig?.logDir ?? ".agent-gate/logs";
+  const logDirConfig = env?.AGENT_GATE_LOG_DIR ?? reportsConfig?.logDir ?? ".agent-gate/logs";
   const outputDirConfig = reportsConfig?.outputDir ?? ".agent-gate/reports";
 
   const logDirAbsolute = resolveAbsolute(repoRoot, logDirConfig);

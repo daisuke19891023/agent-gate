@@ -6,12 +6,13 @@ import { ensureValidConfig, isCommandResult } from "../config.js";
 import { ensureLogDir, resolveArtifacts, resolveLogLevel } from "../artifacts.js";
 import { createJsonLogger } from "../../core/logger.js";
 import { getDaemonStatus, stopDaemon } from "../../daemon/manager.js";
+import { getRepoInfo } from "../../core/repo/repo-info.js";
 
 interface DaemonArgs {
   action: "status" | "stop";
   repo?: string;
   config?: string;
-  scope: "changed" | "all";
+  scope?: "changed" | "all";
   pretty: boolean;
   "log-level": "error" | "warn" | "info" | "debug";
 }
@@ -52,6 +53,7 @@ async function handler(args: DaemonArgs): Promise<CommandResult> {
     return configResult;
   }
 
+  const repoInfo = await getRepoInfo(repoRoot);
   const sessionId = randomUUID();
   const artifacts = resolveArtifacts(repoRoot, "daemon", configResult.config, process.env);
   await ensureLogDir(artifacts.logDirAbsolute);
@@ -59,7 +61,7 @@ async function handler(args: DaemonArgs): Promise<CommandResult> {
     logDirAbsolute: artifacts.logDirAbsolute,
     level: resolveLogLevel(args["log-level"], process.env),
     context: {
-      repoId: "stub-repo-id",
+      repoId: repoInfo.id,
       sessionId,
       command: "daemon"
     },

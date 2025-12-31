@@ -83,7 +83,7 @@ Represents a file that has been modified.
 - `path: string`
   - Repo-relative path with forward slashes.
 
-- `changeType: "added" | "modified" | "deleted" | "renamed"`
+- `changeType: "added" | "modified" | "deleted" | "renamed" | "copied" | "untracked"`
   - The type of change detected.
 
 ---
@@ -211,8 +211,8 @@ The `agent-gate validate` command returns a `ValidationReport`.
 - `mode: "changed" | "all"`
   - Default is `"changed"`.
 
-- `changedFiles: ChangedFile[]`
-  - Files detected as changed. See `ChangedFile` in AnalyzeReport section.
+- `changedFiles: string[]`
+  - Repo-relative paths detected as changed.
 
 - `selectedProjects: ProjectRef[]`
   - Projects actually validated (projects containing changed files).
@@ -292,6 +292,9 @@ Represents a pipeline step.
 ## `Diagnostic`
 
 Diagnostics are normalized across tools (LSP, tsc, pyright, etc).
+The structure is intentionally aligned with formal static analysis formats
+(e.g., SAIF/SARIF): `code` maps to a rule identifier and `file` + `range`
+map to result locations.
 
 ### Required fields
 
@@ -431,7 +434,7 @@ A structured remediation suggestion.
   "scope": {
     "mode": "changed",
     "changedFiles": [
-      { "path": "packages/a/src/index.ts", "changeType": "modified" }
+      "packages/a/src/index.ts"
     ],
     "selectedProjects": [
       { "id": "node:@repo/a", "kind": "node", "name": "@repo/a", "root": "packages/a", "packageManager": "pnpm" }

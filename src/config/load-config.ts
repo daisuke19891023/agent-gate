@@ -30,7 +30,7 @@ export interface LoadedConfig {
 
 export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConfig> {
   const env = options.env ?? process.env;
-  const explicitPath = options.configPath ?? env.AGENT_TOOLS_CONFIG;
+  const explicitPath = options.configPath ?? env.AGENT_GATE_CONFIG;
 
   if (explicitPath) {
     const resolved = path.resolve(explicitPath);

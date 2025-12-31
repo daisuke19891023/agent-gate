@@ -4,7 +4,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**"]
+    ignores: ["coverage/**", "dist/**", "node_modules/**"]
   },
   {
     files: ["**/*.{ts,tsx}"],

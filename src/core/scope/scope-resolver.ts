@@ -27,10 +27,7 @@ const DEFAULT_EXCLUDE_PATTERNS = [
   "**/.next/**",
   "**/.nuxt/**",
   "**/*.min.js",
-  "**/*.min.css",
-  "**/package-lock.json",
-  "**/pnpm-lock.yaml",
-  "**/yarn.lock"
+  "**/*.min.css"
 ];
 
 /**

@@ -276,9 +276,9 @@ These commands also output JSON.
 
 Optional environment variables (all optional; config file is preferred):
 
-- `AGENT_TOOLS_CONFIG` — config file path override
-- `AGENT_TOOLS_LOG_LEVEL` — same as `--log-level`
-- `AGENT_TOOLS_LOG_DIR` — override log output directory (default `.agent-gate/logs`)
+- `AGENT_GATE_CONFIG` — config file path override
+- `AGENT_GATE_LOG_LEVEL` — same as `--log-level`
+- `AGENT_GATE_LOG_DIR` — override log output directory (default `.agent-gate/logs`)
 
 ---
 

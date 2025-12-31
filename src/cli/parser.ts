@@ -58,7 +58,6 @@ export async function run(argv: string[]): Promise<CommandResult> {
     .option("scope", {
       type: "string",
       choices: ["changed", "all"] as const,
-      default: "changed" as const,
       description: "Scope: changed (default) or all",
       global: true
     })

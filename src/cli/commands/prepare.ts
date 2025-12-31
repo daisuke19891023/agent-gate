@@ -15,11 +15,12 @@ import { ensureDaemonRunning } from "../../daemon/manager.js";
 import { resolveNetworkPolicy } from "../../core/runtime/network-policy.js";
 import { detectProjects } from "../../core/projects/index.js";
 import { createInstallEngine, getDepsNextActions } from "../../core/deps/index.js";
+import { getRepoInfo } from "../../core/repo/repo-info.js";
 
 interface PrepareArgs {
   repo?: string;
   config?: string;
-  scope: "changed" | "all";
+  scope?: "changed" | "all";
   pretty: boolean;
   "log-level": "error" | "warn" | "info" | "debug";
 }
@@ -36,6 +37,7 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
     return configResult;
   }
 
+  const repoInfo = await getRepoInfo(repoRoot);
   const sessionId = randomUUID();
   const artifacts = resolveArtifacts(repoRoot, "prepare", configResult.config, process.env);
   await ensureLogDir(artifacts.logDirAbsolute);
@@ -44,7 +46,7 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
     logDirAbsolute: artifacts.logDirAbsolute,
     level: logLevel,
     context: {
-      repoId: "stub-repo-id",
+      repoId: repoInfo.id,
       sessionId,
       command: "prepare"
     },
@@ -81,7 +83,8 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
       generatedAt: new Date().toISOString(),
       repo: {
         root: repoRoot,
-        id: "stub-repo-id"
+        id: repoInfo.id,
+        ...(repoInfo.vcs ? { vcs: repoInfo.vcs } : {})
       },
       steps: [
         {
@@ -189,7 +192,8 @@ async function handler(args: PrepareArgs): Promise<CommandResult> {
     generatedAt: new Date().toISOString(),
     repo: {
       root: repoRoot,
-      id: "stub-repo-id"
+      id: repoInfo.id,
+      ...(repoInfo.vcs ? { vcs: repoInfo.vcs } : {})
     },
     steps: [depsStep],
     projects,

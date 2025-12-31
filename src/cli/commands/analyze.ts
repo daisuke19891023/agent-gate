@@ -9,17 +9,19 @@ import { ExitCode } from "../exit-codes.js";
 import { version } from "../version.js";
 import { ensureValidConfig, isCommandResult } from "../config.js";
 import { ensureLogDir, resolveArtifacts, resolveLogLevel, writeReportFile } from "../artifacts.js";
+import { createErrorOutput } from "../output.js";
 import { createJsonLogger } from "../../core/logger.js";
 import { ensureDaemonRunning } from "../../daemon/manager.js";
-import { resolveScope, ScopeError } from "../../core/scope/index.js";
+import { resolveScope, ScopeError, getScopeNextActions } from "../../core/scope/index.js";
 import { detectProjects } from "../../core/projects/index.js";
 import type { ChangedFile } from "../../core/scope/types.js";
 import type { ProjectRef } from "../../core/projects/types.js";
+import { getRepoInfo } from "../../core/repo/repo-info.js";
 
 interface AnalyzeArgs {
   repo?: string;
   config?: string;
-  scope: "changed" | "all";
+  scope?: "changed" | "all";
   pretty: boolean;
   "log-level": "error" | "warn" | "info" | "debug";
 }
@@ -36,6 +38,7 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     return configResult;
   }
 
+  const repoInfo = await getRepoInfo(repoRoot);
   const sessionId = randomUUID();
   const artifacts = resolveArtifacts(repoRoot, "analyze", configResult.config, process.env);
   await ensureLogDir(artifacts.logDirAbsolute);
@@ -44,7 +47,7 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     logDirAbsolute: artifacts.logDirAbsolute,
     level: logLevel,
     context: {
-      repoId: "stub-repo-id",
+      repoId: repoInfo.id,
       sessionId,
       command: "analyze"
     },
@@ -63,9 +66,12 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
   });
 
   const warnings: string[] = [];
-  const requestedScopeMode: "changed" | "all" = args.scope;
+  const requestedScopeMode: "changed" | "all" =
+    args.scope ?? configResult.config.scope?.defaultMode ?? "changed";
+  const onNoChanges = configResult.config.scope?.onNoChanges ?? "ok";
   let changedFiles: ChangedFile[] = [];
   let hasChanges = false;
+  let scopeFailed = false;
 
   // Resolve scope (detect git changes) if mode is 'changed'
   if (requestedScopeMode === "changed") {
@@ -74,7 +80,7 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
       const scopeResult = await resolveScope({
         repoRoot,
         mode: requestedScopeMode,
-        onNoChanges: "ok",
+        onNoChanges,
         include: configResult.config.scope?.include,
         exclude: configResult.config.scope?.exclude
       });
@@ -90,9 +96,31 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
         logger.warn("scope resolution failed", { error: error.message, code: error.code });
         warnings.push(`Scope resolution failed: ${error.message}`);
         // Keep the requested mode but with empty changedFiles
+        if (error.code === "NO_CHANGES_FAIL") {
+          const nextActions = getScopeNextActions(error).map((action) => ({
+            kind: action.kind,
+            message: action.message,
+            commands: action.commands ? [...action.commands] : undefined,
+            docs: ["docs/reference/cli.md"]
+          }));
+          return {
+            exitCode: ExitCode.UserError,
+            output: createErrorOutput({
+              category: "usage",
+              message: error.message,
+              details: error.details,
+              nextActions
+            }),
+            pretty: args.pretty
+          };
+        }
+        scopeFailed = true;
       } else {
         throw error;
       }
+    }
+    if (!hasChanges && onNoChanges === "skip" && !scopeFailed) {
+      warnings.push("Scope resolved with no changes (onNoChanges=skip).");
     }
   } else {
     logger.info("scope mode is all, skipping git diff detection");
@@ -132,7 +160,8 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     generatedAt: new Date().toISOString(),
     repo: {
       root: repoRoot,
-      id: sessionId.split("-")[0] ?? "unknown"
+      id: repoInfo.id,
+      ...(repoInfo.vcs ? { vcs: repoInfo.vcs } : {})
     },
     scope: {
       mode: requestedScopeMode,
@@ -141,7 +170,7 @@ async function handler(args: AnalyzeArgs): Promise<CommandResult> {
     },
     projects,
     selectedProjects,
-    warnings,
+    warnings: warnings.sort(),
     artifacts: {
       logDir: artifacts.logDir,
       reportPath: artifacts.reportPath

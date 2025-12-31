@@ -67,6 +67,12 @@ export async function detectProjects(
 
   await Promise.all(detectionPromises);
 
+  allWarnings.sort((a, b) => {
+    const keyA = `${a.code}\u0000${a.path ?? ""}\u0000${a.message}`;
+    const keyB = `${b.code}\u0000${b.path ?? ""}\u0000${b.message}`;
+    return keyA.localeCompare(keyB);
+  });
+
   // Filter out excluded projects
   let filteredProjects = allProjects;
   if (exclude && exclude.length > 0) {

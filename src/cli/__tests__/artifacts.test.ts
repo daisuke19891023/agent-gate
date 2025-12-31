@@ -26,7 +26,7 @@ describe("artifacts helpers", () => {
       const config = configSchema.parse({ schemaVersion: 1 });
       const customLogDir = path.join(repoRoot, "custom-logs");
       const artifacts = resolveArtifacts(repoRoot, "prepare", config, {
-        AGENT_TOOLS_LOG_DIR: customLogDir
+        AGENT_GATE_LOG_DIR: customLogDir
       });
 
       expect(artifacts.logDir).toBe("custom-logs");
@@ -37,7 +37,7 @@ describe("artifacts helpers", () => {
   });
 
   it("prefers env log level when valid", () => {
-    const level = resolveLogLevel("info", { AGENT_TOOLS_LOG_LEVEL: "debug" });
+    const level = resolveLogLevel("info", { AGENT_GATE_LOG_LEVEL: "debug" });
 
     expect(level).toBe("debug");
   });

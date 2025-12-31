@@ -216,6 +216,26 @@ describe("scope-resolver", () => {
       expect(result.changedFiles.length).toBe(1);
     });
 
+    it("should include lockfile changes by default", async () => {
+      await initGitRepo();
+      await createFile("test.txt", "content");
+      await stageFile("test.txt");
+      await commit("Initial commit");
+
+      await createFile("pnpm-lock.yaml", "lock");
+
+      const result = await resolveScope({
+        repoRoot: testDir,
+        mode: "changed",
+        onNoChanges: "ok"
+      });
+
+      const hasLockfile = result.changedFiles.some(
+        (file) => file.path === "pnpm-lock.yaml"
+      );
+      expect(hasLockfile).toBe(true);
+    });
+
     it("should return all mode result without detecting changes", async () => {
       await initGitRepo();
       await createFile("test.txt", "content");

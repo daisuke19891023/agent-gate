@@ -6,6 +6,7 @@ import { ensureDaemonDir } from "./paths.js";
 import { createJsonLogger } from "../core/logger.js";
 import type { LogLevel } from "../core/log-level.js";
 import { startDaemonServer } from "./server.js";
+import { getRepoInfo } from "../core/repo/repo-info.js";
 
 const args = process.argv.slice(2);
 
@@ -31,11 +32,12 @@ if (isActive) {
 
 await unlink(socketPath).catch(() => undefined);
 
+const repoInfo = await getRepoInfo(repoRoot);
 const logger = createJsonLogger({
   logDirAbsolute,
   level: logLevel,
   context: {
-    repoId: "stub-repo-id",
+    repoId: repoInfo.id,
     sessionId: randomUUID(),
     command: "daemon"
   },

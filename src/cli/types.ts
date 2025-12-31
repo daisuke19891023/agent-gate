@@ -10,7 +10,7 @@ import type { ExitCode } from "./exit-codes.js";
 export interface GlobalOptions {
   repo?: string;
   config?: string;
-  scope: "changed" | "all";
+  scope?: "changed" | "all";
   pretty: boolean;
   "log-level": "error" | "warn" | "info" | "debug";
 }
@@ -38,6 +38,18 @@ export interface BaseOutput {
 }
 
 /**
+ * Repository reference for outputs.
+ */
+export interface RepoRef {
+  root: string;
+  id: string;
+  vcs?: {
+    kind: "git";
+    head?: string;
+  };
+}
+
+/**
  * Project reference in analyze output.
  */
 export interface AnalyzeProjectRef {
@@ -61,10 +73,7 @@ export interface AnalyzeChangedFile {
  */
 export interface AnalyzeOutput extends BaseOutput {
   command: "analyze";
-  repo: {
-    root: string;
-    id: string;
-  };
+  repo: RepoRef;
   scope: {
     mode: "changed" | "all";
     changedFiles: AnalyzeChangedFile[];
@@ -128,10 +137,7 @@ export interface PrepareNextAction {
  */
 export interface PrepareOutput extends BaseOutput {
   command: "prepare";
-  repo: {
-    root: string;
-    id: string;
-  };
+  repo: RepoRef;
   steps: PrepareStep[];
   projects?: PrepareProjectDetail[];
   nextActions: PrepareNextAction[];
@@ -146,15 +152,12 @@ export interface PrepareOutput extends BaseOutput {
  */
 export interface ValidateOutput extends BaseOutput {
   command: "validate";
-  repo: {
-    root: string;
-    id: string;
-  };
+  repo: RepoRef;
   scope: {
     mode: "changed" | "all";
     changedFiles: string[];
-    selectedProjects: unknown[];
-    potentiallyImpactedProjects: unknown[];
+    selectedProjects: ValidateProjectRef[];
+    potentiallyImpactedProjects: ValidateProjectRef[];
   };
   environment: {
     runtime: {
@@ -163,10 +166,10 @@ export interface ValidateOutput extends BaseOutput {
     };
     fingerprints: Record<string, string>;
   };
-  steps: unknown[];
-  diagnostics: unknown[];
-  warnings: string[];
-  nextActions: unknown[];
+  steps: ValidateStepResult[];
+  diagnostics: ValidateDiagnostic[];
+  warnings: ValidateWarning[];
+  nextActions: ValidateNextAction[];
   summary: {
     ok: boolean;
     errors: number;
@@ -177,6 +180,68 @@ export interface ValidateOutput extends BaseOutput {
     logDir: string;
     reportPath: string;
   };
+}
+
+export interface ValidateProjectRef {
+  id: string;
+  kind: "node" | "python" | "java" | "csharp" | "unknown";
+  name?: string;
+  root: string;
+  packageManager?: string;
+  language?: string;
+}
+
+export interface ValidateStepResult {
+  name: "deps" | "typecheck" | "compile" | "lspDiagnostics" | "tests";
+  status: "ok" | "failed" | "skipped";
+  startedAt?: string;
+  durationMs?: number;
+  command?: string;
+  exitCode?: number;
+  logPath?: string;
+  notes?: string[];
+}
+
+export interface ValidateWarning {
+  kind: string;
+  message: string;
+  projectId?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ValidateNextAction {
+  kind: string;
+  message: string;
+  commands?: string[];
+  docs?: string[];
+}
+
+export interface ValidateDiagnostic {
+  source: string;
+  severity: "error" | "warning" | "info" | "hint";
+  message: string;
+  file?: string;
+  range?: ValidateRange;
+  code?: string | number;
+  tags?: Array<"unnecessary" | "deprecated">;
+  related?: ValidateRelatedDiagnostic[];
+}
+
+export interface ValidateRelatedDiagnostic {
+  message: string;
+  file?: string;
+  range?: ValidateRange;
+}
+
+export interface ValidateRange {
+  start: ValidatePosition;
+  end: ValidatePosition;
+  encoding?: "utf16" | "utf8" | "utf32" | "unknown";
+}
+
+export interface ValidatePosition {
+  line: number;
+  column: number;
 }
 
 /**

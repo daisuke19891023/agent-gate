@@ -1,22 +1,31 @@
 import { randomUUID } from "node:crypto";
-import type { CommandResult, ValidateOutput } from "../types.js";
+import type {
+  CommandResult,
+  ValidateOutput,
+  ValidateWarning,
+  ValidateStepResult,
+  ValidateDiagnostic,
+  ValidateNextAction
+} from "../types.js";
 import { ExitCode } from "../exit-codes.js";
 import { version } from "../version.js";
 import { ensureValidConfig, isCommandResult } from "../config.js";
 import { ensureLogDir, resolveArtifacts, resolveLogLevel, writeReportFile } from "../artifacts.js";
+import { createErrorOutput } from "../output.js";
 import { createJsonLogger } from "../../core/logger.js";
 import { ensureDaemonRunning } from "../../daemon/manager.js";
 import { resolveNetworkPolicy } from "../../core/runtime/network-policy.js";
 import { checkDependencyStatus } from "../../core/runtime/deps-check.js";
 import { resolveProvider } from "../../providers/resolve-provider.js";
-import { resolveScope, ScopeError } from "../../core/scope/index.js";
+import { resolveScope, ScopeError, getScopeNextActions } from "../../core/scope/index.js";
 import { detectProjects } from "../../core/projects/index.js";
 import type { ChangedFile } from "../../core/scope/types.js";
+import { getRepoInfo } from "../../core/repo/repo-info.js";
 
 interface ValidateArgs {
   repo?: string;
   config?: string;
-  scope: "changed" | "all";
+  scope?: "changed" | "all";
   pretty: boolean;
   "log-level": "error" | "warn" | "info" | "debug";
 }
@@ -33,6 +42,7 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     return configResult;
   }
 
+  const repoInfo = await getRepoInfo(repoRoot);
   const sessionId = randomUUID();
   const artifacts = resolveArtifacts(repoRoot, "validate", configResult.config, process.env);
   await ensureLogDir(artifacts.logDirAbsolute);
@@ -41,7 +51,7 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     logDirAbsolute: artifacts.logDirAbsolute,
     level: logLevel,
     context: {
-      repoId: "stub-repo-id",
+      repoId: repoInfo.id,
       sessionId,
       command: "validate"
     },
@@ -59,9 +69,13 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     logLevel
   });
 
-  const warnings: string[] = [];
-  const requestedScopeMode: "changed" | "all" = args.scope;
+  const warnings: ValidateWarning[] = [];
+  const requestedScopeMode: "changed" | "all" =
+    args.scope ?? configResult.config.scope?.defaultMode ?? "changed";
+  const onNoChanges = configResult.config.scope?.onNoChanges ?? "ok";
   let changedFiles: ChangedFile[] = [];
+  let hasChanges = false;
+  let scopeFailed = false;
 
   // Resolve scope (detect git changes) if mode is 'changed'
   if (requestedScopeMode === "changed") {
@@ -70,24 +84,54 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       const scopeResult = await resolveScope({
         repoRoot,
         mode: requestedScopeMode,
-        onNoChanges: "ok",
+        onNoChanges,
         include: configResult.config.scope?.include,
         exclude: configResult.config.scope?.exclude
       });
       changedFiles = [...scopeResult.changedFiles];
+      hasChanges = scopeResult.hasChanges;
       logger.info("scope resolved", {
         mode: requestedScopeMode,
         changedFileCount: changedFiles.length,
-        hasChanges: scopeResult.hasChanges
+        hasChanges
       });
     } catch (error) {
       if (error instanceof ScopeError) {
         logger.warn("scope resolution failed", { error: error.message, code: error.code });
-        warnings.push(`Scope resolution failed: ${error.message}`);
+        if (error.code === "NO_CHANGES_FAIL") {
+          const nextActions = getScopeNextActions(error).map((action) => ({
+            kind: action.kind,
+            message: action.message,
+            commands: action.commands ? [...action.commands] : undefined,
+            docs: ["docs/reference/cli.md"]
+          }));
+          return {
+            exitCode: ExitCode.UserError,
+            output: createErrorOutput({
+              category: "usage",
+              message: error.message,
+              details: error.details,
+              nextActions
+            }),
+            pretty: args.pretty
+          };
+        }
+        warnings.push({
+          kind: "SCOPE_RESOLUTION_FAILED",
+          message: error.message,
+          details: { code: error.code }
+        });
+        scopeFailed = true;
         // Keep the requested mode but with empty changedFiles
       } else {
         throw error;
       }
+    }
+    if (!hasChanges && onNoChanges === "skip") {
+      warnings.push({
+        kind: "NO_CHANGES_SKIPPED",
+        message: "No uncommitted changes detected; validation steps skipped."
+      });
     }
   } else {
     logger.info("scope mode is all, skipping git diff detection");
@@ -104,7 +148,14 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
 
   // Add project detection warnings
   for (const warning of projectResult.warnings) {
-    warnings.push(`${warning.code}: ${warning.message}`);
+    warnings.push({
+      kind: warning.code,
+      message: warning.message,
+      details: {
+        ...(warning.path ? { path: warning.path } : {}),
+        ...(warning.context ? { context: warning.context } : {})
+      }
+    });
   }
 
   logger.info("projects detected", {
@@ -112,19 +163,26 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     selectedProjects: projectResult.selectedProjects.length
   });
 
+  warnings.sort((a, b) => {
+    const pathAValue = a.details?.path;
+    const pathBValue = b.details?.path;
+    const pathA = typeof pathAValue === "string" ? pathAValue : "";
+    const pathB = typeof pathBValue === "string" ? pathBValue : "";
+    const keyA = `${a.kind}\u0000${pathA}\u0000${a.message}`;
+    const keyB = `${b.kind}\u0000${pathB}\u0000${b.message}`;
+    return keyA.localeCompare(keyB);
+  });
+
   const networkPolicy = resolveNetworkPolicy("validate", configResult.config.runtime?.network);
   const { kind: runtimeProvider } = await resolveProvider(configResult.config.runtime?.provider);
-  const dependencyStatus = await checkDependencyStatus(repoRoot);
-  const networkBlocked = networkPolicy === "deny-all" && dependencyStatus.missing;
+  const skipValidation =
+    requestedScopeMode === "changed" && !hasChanges && onNoChanges !== "fail" && !scopeFailed;
+  const dependencyStatus = skipValidation
+    ? { required: false, missing: false, reasons: [] as string[] }
+    : await checkDependencyStatus(repoRoot);
+  const networkBlocked = !skipValidation && networkPolicy === "deny-all" && dependencyStatus.missing;
 
-  const depsStepMessage = networkBlocked
-    ? "Dependencies are missing but network access is disabled for validate."
-    : "validate command is not yet implemented";
-  const skippedStepMessage = networkBlocked
-    ? "Skipped because dependency acquisition was blocked by network policy."
-    : "validate command is not yet implemented";
-
-  const diagnostics = networkBlocked
+  const diagnostics: ValidateDiagnostic[] = networkBlocked
     ? [
         {
           source: "deps",
@@ -135,7 +193,7 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       ]
     : [];
 
-  const nextActions = networkBlocked
+  const nextActions: ValidateNextAction[] = networkBlocked
     ? [
         {
           kind: "run-prepare",
@@ -146,6 +204,38 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       ]
     : [];
 
+  const skipNotes = ["Skipped because no uncommitted changes were detected."];
+  const depsNotes = networkBlocked
+    ? ["Dependency acquisition blocked by network policy.", ...dependencyStatus.reasons]
+    : ["validate command is not yet implemented", ...dependencyStatus.reasons];
+  const skippedNotes = networkBlocked
+    ? ["Skipped because dependency acquisition was blocked by network policy."]
+    : ["validate command is not yet implemented"];
+
+  const steps: ValidateStepResult[] = skipValidation
+    ? [
+        { name: "deps", status: "skipped", notes: skipNotes },
+        { name: "typecheck", status: "skipped", notes: skipNotes },
+        { name: "lspDiagnostics", status: "skipped", notes: skipNotes }
+      ]
+    : [
+        {
+          name: "deps",
+          status: networkBlocked ? "failed" : "skipped",
+          notes: depsNotes
+        },
+        {
+          name: "typecheck",
+          status: "skipped",
+          notes: skippedNotes
+        },
+        {
+          name: "lspDiagnostics",
+          status: "skipped",
+          notes: skippedNotes
+        }
+      ];
+
   const output: ValidateOutput = {
     tool: "agent-gate",
     toolVersion: version,
@@ -154,7 +244,8 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     generatedAt: new Date().toISOString(),
     repo: {
       root: repoRoot,
-      id: sessionId.split("-")[0] ?? "unknown"
+      id: repoInfo.id,
+      ...(repoInfo.vcs ? { vcs: repoInfo.vcs } : {})
     },
     scope: {
       mode: requestedScopeMode,
@@ -163,7 +254,8 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
         id: p.id,
         kind: p.kind,
         name: p.name,
-        root: p.root
+        root: p.root,
+        ...(p.packageManager ? { packageManager: p.packageManager } : {})
       })),
       potentiallyImpactedProjects: []
     },
@@ -174,27 +266,10 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       },
       fingerprints: {}
     },
-    steps: [
-      {
-        name: "deps",
-        status: networkBlocked ? "failed" : "skipped",
-        message: depsStepMessage,
-        ...(dependencyStatus.reasons.length > 0 ? { notes: dependencyStatus.reasons } : {})
-      },
-      {
-        name: "typecheck",
-        status: "skipped",
-        message: skippedStepMessage
-      },
-      {
-        name: "lspDiagnostics",
-        status: "skipped",
-        message: skippedStepMessage
-      }
-    ],
-    diagnostics,
+    steps,
+    diagnostics: skipValidation ? [] : diagnostics,
     warnings,
-    nextActions,
+    nextActions: skipValidation ? [] : nextActions,
     summary: {
       ok: !networkBlocked,
       errors: networkBlocked ? 1 : 0,

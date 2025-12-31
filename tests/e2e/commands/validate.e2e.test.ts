@@ -83,7 +83,7 @@ describe("validate command E2E", () => {
     try {
       const result = await runCli(["validate", "--repo", repoRoot], {
         env: {
-          AGENT_TOOLS_LOG_DIR: customLogDir
+          AGENT_GATE_LOG_DIR: customLogDir
         }
       });
 
@@ -110,7 +110,7 @@ describe("validate command E2E", () => {
       const payload = JSON.parse(firstLine) as Record<string, unknown>;
 
       expect(payload).toMatchObject({
-        repoId: "stub-repo-id",
+        repoId: expect.any(String),
         command: "validate"
       });
       expect(typeof payload.sessionId).toBe("string");

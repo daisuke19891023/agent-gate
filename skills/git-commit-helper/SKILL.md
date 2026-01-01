@@ -11,7 +11,7 @@ Provide a deterministic commit workflow: analyze changes, group by package or me
 
 ## Workflow
 
-1. Verify repo context is `/home/okamoto-daisuke/develop/agent-gate`.
+1. Verify repo context.
 2. Inspect changes:
    - `git status -sb`
    - `git diff`

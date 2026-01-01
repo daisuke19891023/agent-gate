@@ -168,7 +168,7 @@ export interface ValidateOutput extends BaseOutput {
   };
   steps: ValidateStepResult[];
   diagnostics: ValidateDiagnostic[];
-  warnings: string[];
+  warnings: ValidateWarning[];
   nextActions: ValidateNextAction[];
   summary: {
     ok: boolean;

@@ -4,7 +4,8 @@ import type {
   ValidateOutput,
   ValidateStepResult,
   ValidateDiagnostic,
-  ValidateNextAction
+  ValidateNextAction,
+  ValidateWarning
 } from "../types.js";
 import { ExitCode } from "../exit-codes.js";
 import { version } from "../version.js";
@@ -70,7 +71,7 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
     logLevel
   });
 
-  const warnings: string[] = [];
+  const warnings: ValidateWarning[] = [];
   const requestedScopeMode: "changed" | "all" =
     args.scope ?? configResult.config.scope?.defaultMode ?? "changed";
   const onNoChanges = configResult.config.scope?.onNoChanges ?? "ok";
@@ -117,16 +118,20 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
             pretty: args.pretty
           };
         }
-        warnings.push(`SCOPE_RESOLUTION_FAILED: ${error.message}`);
+        warnings.push({
+          kind: "SCOPE_RESOLUTION_FAILED",
+          message: error.message
+        });
         scopeFailed = true;
       } else {
         throw error;
       }
     }
     if (!hasChanges && onNoChanges === "skip") {
-      warnings.push(
-        "NO_CHANGES_SKIPPED: No uncommitted changes detected; validation steps skipped."
-      );
+      warnings.push({
+        kind: "NO_CHANGES_SKIPPED",
+        message: "No uncommitted changes detected; validation steps skipped."
+      });
     }
   } else {
     logger.info("scope mode is all, skipping git diff detection");
@@ -143,7 +148,10 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
 
   // Add project detection warnings
   for (const warning of projectResult.warnings) {
-    warnings.push(`${warning.code}: ${warning.message}`);
+    warnings.push({
+      kind: warning.code,
+      message: warning.message
+    });
   }
 
   logger.info("projects detected", {
@@ -246,7 +254,30 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
 
       // Add typecheck warnings
       for (const warning of typecheckResult.warnings) {
-        warnings.push(warning);
+        // Parse warning string format "KIND: message" or "KIND: projectId - message"
+        const colonIndex = warning.indexOf(":");
+        if (colonIndex > 0) {
+          const kind = warning.substring(0, colonIndex);
+          const rest = warning.substring(colonIndex + 1).trim();
+          const dashIndex = rest.indexOf(" - ");
+          if (dashIndex > 0) {
+            warnings.push({
+              kind,
+              message: rest.substring(dashIndex + 3),
+              projectId: rest.substring(0, dashIndex)
+            });
+          } else {
+            warnings.push({
+              kind,
+              message: rest
+            });
+          }
+        } else {
+          warnings.push({
+            kind: "UNKNOWN",
+            message: warning
+          });
+        }
       }
 
       // Convert diagnostics
@@ -322,8 +353,12 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
   const allStepsOk = steps.every((s) => s.status === "ok" || s.status === "skipped");
   const totalDurationMs = Date.now() - startTime;
 
-  // Sort warnings for determinism
-  warnings.sort();
+  // Sort warnings for determinism (by kind, then message)
+  warnings.sort((a, b) => {
+    const kindCompare = a.kind.localeCompare(b.kind);
+    if (kindCompare !== 0) return kindCompare;
+    return a.message.localeCompare(b.message);
+  });
 
   const output: ValidateOutput = {
     tool: "agent-gate",

@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import type {
   CommandResult,
   ValidateOutput,
-  ValidateWarning,
   ValidateStepResult,
   ValidateDiagnostic,
-  ValidateNextAction
+  ValidateNextAction,
+  ValidateWarning
 } from "../types.js";
 import { ExitCode } from "../exit-codes.js";
 import { version } from "../version.js";
@@ -21,6 +21,7 @@ import { resolveScope, ScopeError, getScopeNextActions } from "../../core/scope/
 import { detectProjects } from "../../core/projects/index.js";
 import type { ChangedFile } from "../../core/scope/types.js";
 import { getRepoInfo } from "../../core/repo/repo-info.js";
+import { createTypecheckEngine, getTypecheckNextActions } from "../../core/typecheck/index.js";
 
 interface ValidateArgs {
   repo?: string;
@@ -31,6 +32,7 @@ interface ValidateArgs {
 }
 
 async function handler(args: ValidateArgs): Promise<CommandResult> {
+  const startTime = Date.now();
   const repoRoot = args.repo ?? process.cwd();
   const configResult = await ensureValidConfig({
     configPath: args.config,
@@ -118,11 +120,9 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
         }
         warnings.push({
           kind: "SCOPE_RESOLUTION_FAILED",
-          message: error.message,
-          details: { code: error.code }
+          message: error.message
         });
         scopeFailed = true;
-        // Keep the requested mode but with empty changedFiles
       } else {
         throw error;
       }
@@ -150,27 +150,13 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
   for (const warning of projectResult.warnings) {
     warnings.push({
       kind: warning.code,
-      message: warning.message,
-      details: {
-        ...(warning.path ? { path: warning.path } : {}),
-        ...(warning.context ? { context: warning.context } : {})
-      }
+      message: warning.message
     });
   }
 
   logger.info("projects detected", {
     totalProjects: projectResult.projects.length,
     selectedProjects: projectResult.selectedProjects.length
-  });
-
-  warnings.sort((a, b) => {
-    const pathAValue = a.details?.path;
-    const pathBValue = b.details?.path;
-    const pathA = typeof pathAValue === "string" ? pathAValue : "";
-    const pathB = typeof pathBValue === "string" ? pathBValue : "";
-    const keyA = `${a.kind}\u0000${pathA}\u0000${a.message}`;
-    const keyB = `${b.kind}\u0000${pathB}\u0000${b.message}`;
-    return keyA.localeCompare(keyB);
   });
 
   const networkPolicy = resolveNetworkPolicy("validate", configResult.config.runtime?.network);
@@ -183,59 +169,196 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
   const networkBlocked =
     !skipValidation && networkPolicy === "deny-all" && dependencyStatus.missing;
 
-  const diagnostics: ValidateDiagnostic[] = networkBlocked
-    ? [
-        {
-          source: "deps",
-          severity: "error",
-          code: "NETWORK_BLOCKED",
-          message: "Dependencies are missing and network access is blocked during validate."
-        }
-      ]
-    : [];
+  const steps: ValidateStepResult[] = [];
+  const diagnostics: ValidateDiagnostic[] = [];
+  const nextActions: ValidateNextAction[] = [];
 
-  const nextActions: ValidateNextAction[] = networkBlocked
-    ? [
-        {
-          kind: "run-prepare",
-          message: "Run prepare with network access enabled to fetch dependencies.",
-          commands: ["agent-gate prepare"],
-          docs: ["docs/reference/cli.md"]
-        }
-      ]
-    : [];
-
+  // Skip notes for when validation is skipped
   const skipNotes = ["Skipped because no uncommitted changes were detected."];
-  const depsNotes = networkBlocked
-    ? ["Dependency acquisition blocked by network policy.", ...dependencyStatus.reasons]
-    : ["validate command is not yet implemented", ...dependencyStatus.reasons];
-  const skippedNotes = networkBlocked
-    ? ["Skipped because dependency acquisition was blocked by network policy."]
-    : ["validate command is not yet implemented"];
 
-  const steps: ValidateStepResult[] = skipValidation
-    ? [
-        { name: "deps", status: "skipped", notes: skipNotes },
-        { name: "typecheck", status: "skipped", notes: skipNotes },
-        { name: "lspDiagnostics", status: "skipped", notes: skipNotes }
-      ]
-    : [
-        {
-          name: "deps",
-          status: networkBlocked ? "failed" : "skipped",
-          notes: depsNotes
-        },
-        {
-          name: "typecheck",
-          status: "skipped",
-          notes: skippedNotes
-        },
-        {
-          name: "lspDiagnostics",
-          status: "skipped",
-          notes: skippedNotes
+  if (skipValidation) {
+    // All steps skipped
+    steps.push(
+      { name: "deps", status: "skipped", notes: skipNotes },
+      { name: "typecheck", status: "skipped", notes: skipNotes },
+      { name: "lspDiagnostics", status: "skipped", notes: skipNotes }
+    );
+  } else if (networkBlocked) {
+    // Network blocked - deps failed, others skipped
+    const depsNotes = [
+      "Dependency acquisition blocked by network policy.",
+      ...dependencyStatus.reasons
+    ];
+    const skippedNotes = ["Skipped because dependency acquisition was blocked by network policy."];
+
+    steps.push(
+      { name: "deps", status: "failed", notes: depsNotes },
+      { name: "typecheck", status: "skipped", notes: skippedNotes },
+      { name: "lspDiagnostics", status: "skipped", notes: skippedNotes }
+    );
+
+    diagnostics.push({
+      source: "deps",
+      severity: "error",
+      code: "NETWORK_BLOCKED",
+      message: "Dependencies are missing and network access is blocked during validate."
+    });
+
+    nextActions.push({
+      kind: "run-prepare",
+      message: "Run prepare with network access enabled to fetch dependencies.",
+      commands: ["agent-gate prepare"],
+      docs: ["docs/reference/cli.md"]
+    });
+  } else {
+    // Normal validation flow
+    const depsStartTime = Date.now();
+
+    // Step 1: Deps check (assuming deps are already installed via prepare)
+    const depsStep: ValidateStepResult = {
+      name: "deps",
+      status: dependencyStatus.missing ? "failed" : "ok",
+      durationMs: Date.now() - depsStartTime,
+      notes: dependencyStatus.reasons.length > 0 ? dependencyStatus.reasons : undefined
+    };
+    steps.push(depsStep);
+
+    if (dependencyStatus.missing) {
+      diagnostics.push({
+        source: "deps",
+        severity: "error",
+        code: "DEPS_MISSING",
+        message: "Dependencies are missing. Run prepare first."
+      });
+      nextActions.push({
+        kind: "run-prepare",
+        message: "Run prepare to install dependencies.",
+        commands: ["agent-gate prepare"],
+        docs: ["docs/reference/cli.md"]
+      });
+    }
+
+    // Step 2: Typecheck
+    if (projectResult.selectedProjects.length > 0) {
+      logger.info("running typecheck", { step: "typecheck" });
+      const typecheckStartTime = Date.now();
+
+      const typecheckEngine = createTypecheckEngine({
+        repoRoot,
+        timeoutMs: 120_000, // 2 minutes default
+        config: configResult.config
+      });
+
+      const typecheckResult = await typecheckEngine.typecheckAll(projectResult.selectedProjects);
+      const typecheckDurationMs = Date.now() - typecheckStartTime;
+
+      // Add typecheck warnings
+      for (const warning of typecheckResult.warnings) {
+        // Parse warning string format "KIND: message" or "KIND: projectId - message"
+        const colonIndex = warning.indexOf(":");
+        if (colonIndex > 0) {
+          const kind = warning.substring(0, colonIndex);
+          const rest = warning.substring(colonIndex + 1).trim();
+          const dashIndex = rest.indexOf(" - ");
+          if (dashIndex > 0) {
+            warnings.push({
+              kind,
+              message: rest.substring(dashIndex + 3),
+              projectId: rest.substring(0, dashIndex)
+            });
+          } else {
+            warnings.push({
+              kind,
+              message: rest
+            });
+          }
+        } else {
+          warnings.push({
+            kind: "UNKNOWN",
+            message: warning
+          });
         }
-      ];
+      }
+
+      // Convert diagnostics
+      for (const diag of typecheckResult.diagnostics) {
+        diagnostics.push({
+          source: diag.source,
+          severity: diag.severity,
+          message: diag.message,
+          file: diag.file,
+          range: diag.range
+            ? {
+                start: { line: diag.range.start.line, column: diag.range.start.column },
+                end: { line: diag.range.end.line, column: diag.range.end.column },
+                encoding: diag.range.encoding
+              }
+            : undefined,
+          code: diag.code,
+          tags: diag.tags ? [...diag.tags] : undefined
+        });
+      }
+
+      // Collect nextActions from failed projects
+      for (const project of typecheckResult.projects) {
+        if (project.error) {
+          const actions = getTypecheckNextActions(project.error);
+          for (const action of actions) {
+            // Avoid duplicates
+            if (!nextActions.some((a) => a.kind === action.kind)) {
+              nextActions.push({
+                kind: action.kind,
+                message: action.message,
+                commands: action.commands ? [...action.commands] : undefined,
+                docs: action.docs ? [...action.docs] : undefined
+              });
+            }
+          }
+        }
+      }
+
+      const typecheckStep: ValidateStepResult = {
+        name: "typecheck",
+        status: typecheckResult.allSucceeded ? "ok" : "failed",
+        durationMs: typecheckDurationMs,
+        notes: typecheckResult.warnings.length > 0 ? [...typecheckResult.warnings] : undefined
+      };
+      steps.push(typecheckStep);
+
+      logger.info("typecheck completed", {
+        success: typecheckResult.allSucceeded,
+        durationMs: typecheckDurationMs,
+        diagnosticCount: typecheckResult.diagnostics.length
+      });
+    } else {
+      // No projects to typecheck
+      steps.push({
+        name: "typecheck",
+        status: "skipped",
+        notes: ["No projects selected for typecheck."]
+      });
+    }
+
+    // Step 3: LSP Diagnostics (not yet implemented)
+    steps.push({
+      name: "lspDiagnostics",
+      status: "skipped",
+      notes: ["LSP diagnostics not yet implemented."]
+    });
+  }
+
+  // Calculate summary
+  const errorCount = diagnostics.filter((d) => d.severity === "error").length;
+  const warningCount = diagnostics.filter((d) => d.severity === "warning").length;
+  const allStepsOk = steps.every((s) => s.status === "ok" || s.status === "skipped");
+  const totalDurationMs = Date.now() - startTime;
+
+  // Sort warnings for determinism (by kind, then message)
+  warnings.sort((a, b) => {
+    const kindCompare = a.kind.localeCompare(b.kind);
+    if (kindCompare !== 0) return kindCompare;
+    return a.message.localeCompare(b.message);
+  });
 
   const output: ValidateOutput = {
     tool: "agent-gate",
@@ -268,14 +391,14 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
       fingerprints: {}
     },
     steps,
-    diagnostics: skipValidation ? [] : diagnostics,
+    diagnostics,
     warnings,
-    nextActions: skipValidation ? [] : nextActions,
+    nextActions,
     summary: {
-      ok: !networkBlocked,
-      errors: networkBlocked ? 1 : 0,
-      warnings: warnings.length,
-      durationMs: 0
+      ok: allStepsOk && errorCount === 0,
+      errors: errorCount,
+      warnings: warningCount + warnings.length,
+      durationMs: totalDurationMs
     },
     artifacts: {
       logDir: artifacts.logDir,
@@ -285,11 +408,14 @@ async function handler(args: ValidateArgs): Promise<CommandResult> {
 
   await writeReportFile(output, artifacts.reportPathAbsolute, args.pretty);
   logger.info("validate command completed", {
-    reportPath: artifacts.reportPath
+    ok: output.summary.ok,
+    reportPath: artifacts.reportPath,
+    durationMs: totalDurationMs
   });
 
+  const exitCode = output.summary.ok ? ExitCode.Success : ExitCode.ValidationFailed;
   return {
-    exitCode: networkBlocked ? ExitCode.ValidationFailed : ExitCode.Success,
+    exitCode,
     output,
     pretty: args.pretty
   };

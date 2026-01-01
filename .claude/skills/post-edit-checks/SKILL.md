@@ -11,7 +11,7 @@ Enforce the agent-gate post-edit checklist by running the required pnpm checks i
 
 ## Workflow
 
-1. Confirm you are at the repo root (`/home/okamoto-daisuke/develop/agent-gate`).
+1. Confirm you are at the repository root (where `package.json` exist).
 2. Run the checks in this order:
    - `pnpm format`
    - `pnpm lint`
